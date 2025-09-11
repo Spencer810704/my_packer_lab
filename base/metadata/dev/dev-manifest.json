@@ -35,7 +35,19 @@
         "environment": "dev",
         "owner": "infra-team"
       }
+    },
+    {
+      "name": "base",
+      "builder_type": "amazon-ebs",
+      "build_time": 1757589858,
+      "files": null,
+      "artifact_id": "ap-northeast-1:ami-0ebb6b6a1a6358fde",
+      "packer_run_uuid": "dfadfdc2-f428-252e-842e-10c55dc61509",
+      "custom_data": {
+        "environment": "dev",
+        "owner": "infra-team"
+      }
     }
   ],
-  "last_run_uuid": "a0d96697-380d-efd9-7a67-b430a9708fb9"
+  "last_run_uuid": "dfadfdc2-f428-252e-842e-10c55dc61509"
 }
