@@ -2,11 +2,6 @@ pipeline {
     agent any
     
     parameters {
-        string(
-            name: 'AWS_CREDENTIALS_ID',
-            defaultValue: 'aws-credentials',
-            description: 'Jenkins 中的 AWS Credentials ID'
-        )
         choice(
             name: 'ENVIRONMENT',
             choices: ['dev', 'stg', 'prod'],
@@ -85,13 +80,11 @@ pipeline {
             }
         }
         
-        stage('Setup AWS Credentials') {
+        stage('Verify AWS Access') {
             steps {
-                withCredentials([aws(credentialsId: "${params.AWS_CREDENTIALS_ID}", region: "${params.AWS_REGION}")]) {
-                    script {
-                        echo "設定 AWS 認證"
-                        sh 'aws sts get-caller-identity'
-                    }
+                script {
+                    echo "驗證 AWS 存取權限"
+                    sh 'aws sts get-caller-identity'
                 }
             }
         }
@@ -100,7 +93,8 @@ pipeline {
             steps {
                 dir("${params.PROJECT_TYPE}") {
                     script {
-                        echo "初始化 Packer"
+                        echo "初始化 Packer Plugins"
+                        echo "檢查是否需要下載 plugins..."
                         sh 'packer init .'
                     }
                 }
@@ -139,26 +133,26 @@ pipeline {
             }
             steps {
                 dir("${params.PROJECT_TYPE}") {
-                    withCredentials([aws(credentialsId: "${params.AWS_CREDENTIALS_ID}", region: "${params.AWS_REGION}")]) {
-                        script {
-                            echo "開始建構 AMI"
-                            def buildCmd = "packer build -var-file=env/${params.ENVIRONMENT}.pkrvars.hcl"
-                            
-                            // 根據專案類型添加通用變數檔案
-                            if (params.PROJECT_TYPE == 'base') {
-                                buildCmd += " -var-file=common.pkrvars.hcl"
-                            }
-                            
-                            // 添加動態參數
-                            buildCmd += " -var='region=${params.AWS_REGION}'"
-                            buildCmd += " -var='instance_type=${params.INSTANCE_TYPE}'"
-                            buildCmd += " -var='ssh_username=${params.SSH_USERNAME}'"
-                            buildCmd += " -var='ami_name_prefix=${params.AMI_NAME_PREFIX}'"
-                            buildCmd += " -var='owner=${params.OWNER}'"
-                            buildCmd += " ."
-                            
-                            sh buildCmd
+                    script {
+                        echo "開始建構 AMI"
+                        echo "工作目錄: ${pwd()}"
+                        
+                        def buildCmd = "packer build -var-file=env/${params.ENVIRONMENT}.pkrvars.hcl"
+                        
+                        // 根據專案類型添加通用變數檔案
+                        if (params.PROJECT_TYPE == 'base') {
+                            buildCmd += " -var-file=common.pkrvars.hcl"
                         }
+                        
+                        // 添加動態參數
+                        buildCmd += " -var='region=${params.AWS_REGION}'"
+                        buildCmd += " -var='instance_type=${params.INSTANCE_TYPE}'"
+                        buildCmd += " -var='ssh_username=${params.SSH_USERNAME}'"
+                        buildCmd += " -var='ami_name_prefix=${params.AMI_NAME_PREFIX}'"
+                        buildCmd += " -var='owner=${params.OWNER}'"
+                        buildCmd += " ."
+                        
+                        sh buildCmd
                     }
                 }
             }
@@ -197,18 +191,16 @@ pipeline {
                 }
             }
             steps {
-                withCredentials([aws(credentialsId: "${params.AWS_CREDENTIALS_ID}", region: "${params.AWS_REGION}")]) {
-                    script {
-                        echo "為 AMI 添加標籤"
-                        sh """
-                            aws ec2 create-tags --region ${params.AWS_REGION} --resources ${env.AMI_ID} --tags \
-                                Key=Environment,Value=${params.ENVIRONMENT} \
-                                Key=ProjectType,Value=${params.PROJECT_TYPE} \
-                                Key=BuildBy,Value=Jenkins \
-                                Key=BuildNumber,Value=${BUILD_NUMBER} \
-                                Key=Owner,Value=${params.OWNER}
-                        """
-                    }
+                script {
+                    echo "為 AMI 添加標籤"
+                    sh """
+                        aws ec2 create-tags --region ${params.AWS_REGION} --resources ${env.AMI_ID} --tags \
+                            Key=Environment,Value=${params.ENVIRONMENT} \
+                            Key=ProjectType,Value=${params.PROJECT_TYPE} \
+                            Key=BuildBy,Value=Jenkins \
+                            Key=BuildNumber,Value=${BUILD_NUMBER} \
+                            Key=Owner,Value=${params.OWNER}
+                    """
                 }
             }
         }
@@ -221,12 +213,12 @@ pipeline {
     //     }
     //     success {
     //         script {
-    //             def message = "AMI 建構成功！\\n"
-    //             message += "環境: ${params.ENVIRONMENT}\\n"
-    //             message += "專案類型: ${params.PROJECT_TYPE}\\n"
-    //             message += "AWS 區域: ${params.AWS_REGION}\\n"
+    //             def message = "AMI 建構成功！\n"
+    //             message += "環境: ${params.ENVIRONMENT}\n"
+    //             message += "專案類型: ${params.PROJECT_TYPE}\n"
+    //             message += "AWS 區域: ${params.AWS_REGION}\n"
     //             if (env.AMI_ID) {
-    //                 message += "AMI ID: ${env.AMI_ID}\\n"
+    //                 message += "AMI ID: ${env.AMI_ID}\n"
     //             }
     //             echo message
     //         }
