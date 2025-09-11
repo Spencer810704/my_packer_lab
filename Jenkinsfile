@@ -12,8 +12,13 @@ pipeline {
         )
         choice(
             name: 'PROJECT_TYPE',
-            choices: ['base', 'mps-openresty'],
+            choices: ['mps-openresty'],
             description: '選擇專案類型'
+        )
+        string(
+            name: 'BASE_AMI_ID',
+            defaultValue: 'ami-0b3df0f36f5b89775',
+            description: '基底 AMI ID (預設使用已安裝套件的 base image)'
         )
         choice(
             name: 'AWS_REGION',
@@ -24,16 +29,6 @@ pipeline {
             name: 'INSTANCE_TYPE',
             choices: ['t3.micro', 't3.small', 't3.medium'],
             description: '選擇 EC2 實例類型'
-        )
-        string(
-            name: 'AMI_NAME_PREFIX',
-            defaultValue: 'base-image',
-            description: 'AMI 名稱前綴'
-        )
-        string(
-            name: 'SSH_USERNAME',
-            defaultValue: 'ubuntu',
-            description: 'SSH 連接用戶名'
         )
         string(
             name: 'OWNER',
@@ -111,17 +106,13 @@ pipeline {
                         echo "驗證 Packer 配置"
                         def validateCmd = "packer validate -var-file=env/${params.ENVIRONMENT}.pkrvars.hcl"
                         
-                        // 根據專案類型添加通用變數檔案
-                        if (params.PROJECT_TYPE == 'base') {
-                            validateCmd += " -var-file=common.pkrvars.hcl"
-                        }
-                        
                         // 添加動態參數
                         validateCmd += " -var='region=${params.AWS_REGION}'"
                         validateCmd += " -var='instance_type=${params.INSTANCE_TYPE}'"
-                        validateCmd += " -var='ssh_username=${params.SSH_USERNAME}'"
-                        validateCmd += " -var='ami_name_prefix=${params.AMI_NAME_PREFIX}'"
-                        validateCmd += " -var='owner=${params.OWNER}'"
+                        
+                        // 傳遞 base AMI ID
+                        validateCmd += " -var='base_ami_id=${params.BASE_AMI_ID}'"
+                        
                         validateCmd += " ."
                         
                         sh validateCmd
@@ -142,17 +133,14 @@ pipeline {
                         
                         def buildCmd = "packer build -var-file=env/${params.ENVIRONMENT}.pkrvars.hcl"
                         
-                        // 根據專案類型添加通用變數檔案
-                        if (params.PROJECT_TYPE == 'base') {
-                            buildCmd += " -var-file=common.pkrvars.hcl"
-                        }
-                        
                         // 添加動態參數
                         buildCmd += " -var='region=${params.AWS_REGION}'"
                         buildCmd += " -var='instance_type=${params.INSTANCE_TYPE}'"
-                        buildCmd += " -var='ssh_username=${params.SSH_USERNAME}'"
-                        buildCmd += " -var='ami_name_prefix=${params.AMI_NAME_PREFIX}'"
-                        buildCmd += " -var='owner=${params.OWNER}'"
+                        
+                        // 傳遞 base AMI ID
+                        echo "使用基底 AMI: ${params.BASE_AMI_ID}"
+                        buildCmd += " -var='base_ami_id=${params.BASE_AMI_ID}'"
+                        
                         buildCmd += " ."
                         
                         sh buildCmd
@@ -210,25 +198,26 @@ pipeline {
         }
     }
     
-    // post {
-    //     always {
-    //         echo "清理工作空間"
-    //         cleanWs()
-    //     }
-    //     success {
-    //         script {
-    //             def message = "AMI 建構成功！\n"
-    //             message += "環境: ${params.ENVIRONMENT}\n"
-    //             message += "專案類型: ${params.PROJECT_TYPE}\n"
-    //             message += "AWS 區域: ${params.AWS_REGION}\n"
-    //             if (env.AMI_ID) {
-    //                 message += "AMI ID: ${env.AMI_ID}\n"
-    //             }
-    //             echo message
-    //         }
-    //     }
-    //     failure {
-    //         echo "AMI 建構失敗，請檢查日誌"
-    //     }
-    // }
+    post {
+        always {
+            echo "清理工作空間"
+            cleanWs()
+        }
+        success {
+            script {
+                def message = "AMI 建構成功！\n"
+                message += "環境: ${params.ENVIRONMENT}\n"
+                message += "專案類型: ${params.PROJECT_TYPE}\n"
+                message += "AWS 區域: ${params.AWS_REGION}\n"
+                message += "基底 AMI: ${params.BASE_AMI_ID}\n"
+                if (env.AMI_ID) {
+                    message += "新建 AMI ID: ${env.AMI_ID}\n"
+                }
+                echo message
+            }
+        }
+        failure {
+            echo "AMI 建構失敗，請檢查日誌"
+        }
+    }
 }
