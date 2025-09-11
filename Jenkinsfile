@@ -130,7 +130,7 @@ pipeline {
         
         stage('Packer Build') {
             when {
-                not { params.DRY_RUN }
+                expression { !params.DRY_RUN }
             }
             steps {
                 dir("${params.PROJECT_TYPE}") {
@@ -161,7 +161,7 @@ pipeline {
         
         stage('Extract AMI Info') {
             when {
-                not { params.DRY_RUN }
+                expression { !params.DRY_RUN }
             }
             steps {
                 dir("${params.PROJECT_TYPE}") {
@@ -186,8 +186,10 @@ pipeline {
         
         stage('Tag AMI') {
             when {
-                not { params.DRY_RUN }
-                expression { env.AMI_ID != null }
+                allOf {
+                    expression { !params.DRY_RUN }
+                    expression { env.AMI_ID != null }
+                }
             }
             steps {
                 withCredentials([aws(credentialsId: 'aws-credentials', region: "${params.AWS_REGION}")]) {
