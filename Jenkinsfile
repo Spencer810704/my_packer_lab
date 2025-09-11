@@ -1,5 +1,6 @@
 pipeline {
     agent any
+    // Packer 執行時會有轉義字元 , 為了讓顏色可以正常顯示需要安裝 ansiColor 的 Jenkins plugin
     options {
         ansiColor('xterm')
     }
