@@ -172,6 +172,7 @@ pipeline {
                         // 讀取 manifest 檔案獲取 AMI ID
                         def manifestFile = "metadata/${params.ENVIRONMENT}/${params.ENVIRONMENT}-manifest.json"
                         if (fileExists(manifestFile)) {
+                            // 如果沒有安裝 Pipeline Utility Steps 插件會出現 No such DSL method 'readJSON' found among steps 的錯誤 
                             def manifest = readJSON file: manifestFile
                             if (manifest.builds && manifest.builds.size() > 0) {
                                 def amiId = manifest.builds[0].artifact_id?.split(':')[1]
