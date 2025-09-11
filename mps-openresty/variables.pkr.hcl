@@ -7,16 +7,26 @@ variable "env" {
 }
 
 variable "region" {
-  type        = string
-  description = "AWS region for building AMI"
+  type = string
 }
 
 variable "instance_type" {
-  type        = string
-  description = "Instance type for building"
+  type = string
 }
 
 variable "base_ami_id" {
   type        = string
   description = "Base AMI ID for building"
+}
+
+variable "ssh_username" {
+  type        = string
+  default     = "ubuntu"
+  description = "SSH username for connecting to the instance"
+}
+
+variable "owner" {
+  type        = string
+  default     = "infra-team"
+  description = "Owner tag value for resources"
 }

@@ -27,7 +27,7 @@ build {
 
     custom_data = {
       environment = "${var.env}"
-      owner       = "infra-team"
+      owner       = var.owner
     }
 
   }
