@@ -2,6 +2,11 @@ pipeline {
     agent any
     
     parameters {
+        string(
+            name: 'AWS_CREDENTIALS_ID',
+            defaultValue: 'aws-credentials',
+            description: 'Jenkins 中的 AWS Credentials ID'
+        )
         choice(
             name: 'ENVIRONMENT',
             choices: ['dev', 'stg', 'prod'],
@@ -82,7 +87,7 @@ pipeline {
         
         stage('Setup AWS Credentials') {
             steps {
-                withCredentials([aws(credentialsId: 'aws-credentials', region: "${params.AWS_REGION}")]) {
+                withCredentials([aws(credentialsId: "${params.AWS_CREDENTIALS_ID}", region: "${params.AWS_REGION}")]) {
                     script {
                         echo "設定 AWS 認證"
                         sh 'aws sts get-caller-identity'
@@ -134,7 +139,7 @@ pipeline {
             }
             steps {
                 dir("${params.PROJECT_TYPE}") {
-                    withCredentials([aws(credentialsId: 'aws-credentials', region: "${params.AWS_REGION}")]) {
+                    withCredentials([aws(credentialsId: "${params.AWS_CREDENTIALS_ID}", region: "${params.AWS_REGION}")]) {
                         script {
                             echo "開始建構 AMI"
                             def buildCmd = "packer build -var-file=env/${params.ENVIRONMENT}.pkrvars.hcl"
@@ -192,7 +197,7 @@ pipeline {
                 }
             }
             steps {
-                withCredentials([aws(credentialsId: 'aws-credentials', region: "${params.AWS_REGION}")]) {
+                withCredentials([aws(credentialsId: "${params.AWS_CREDENTIALS_ID}", region: "${params.AWS_REGION}")]) {
                     script {
                         echo "為 AMI 添加標籤"
                         sh """
@@ -209,25 +214,25 @@ pipeline {
         }
     }
     
-    post {
-        always {
-            echo "清理工作空間"
-            cleanWs()
-        }
-        success {
-            script {
-                def message = "AMI 建構成功！\\n"
-                message += "環境: ${params.ENVIRONMENT}\\n"
-                message += "專案類型: ${params.PROJECT_TYPE}\\n"
-                message += "AWS 區域: ${params.AWS_REGION}\\n"
-                if (env.AMI_ID) {
-                    message += "AMI ID: ${env.AMI_ID}\\n"
-                }
-                echo message
-            }
-        }
-        failure {
-            echo "AMI 建構失敗，請檢查日誌"
-        }
-    }
+    // post {
+    //     always {
+    //         echo "清理工作空間"
+    //         cleanWs()
+    //     }
+    //     success {
+    //         script {
+    //             def message = "AMI 建構成功！\\n"
+    //             message += "環境: ${params.ENVIRONMENT}\\n"
+    //             message += "專案類型: ${params.PROJECT_TYPE}\\n"
+    //             message += "AWS 區域: ${params.AWS_REGION}\\n"
+    //             if (env.AMI_ID) {
+    //                 message += "AMI ID: ${env.AMI_ID}\\n"
+    //             }
+    //             echo message
+    //         }
+    //     }
+    //     failure {
+    //         echo "AMI 建構失敗，請檢查日誌"
+    //     }
+    // }
 }
