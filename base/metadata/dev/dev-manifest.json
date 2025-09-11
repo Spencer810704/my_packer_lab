@@ -1,0 +1,17 @@
+{
+  "builds": [
+    {
+      "name": "base",
+      "builder_type": "amazon-ebs",
+      "build_time": 1757549568,
+      "files": null,
+      "artifact_id": "ap-northeast-1:ami-025b2f7e2dac9b84e",
+      "packer_run_uuid": "6eaa57c4-f53c-c494-28c9-f7d8a80f42e4",
+      "custom_data": {
+        "environment": "dev",
+        "owner": "infra-team"
+      }
+    }
+  ],
+  "last_run_uuid": "6eaa57c4-f53c-c494-28c9-f7d8a80f42e4"
+}
