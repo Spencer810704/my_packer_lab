@@ -17,5 +17,6 @@ variable "instance_type" {
 }
 
 variable "base_ami_id" {
-  type = string
+  type        = string
+  description = "Base AMI ID for building"
 }

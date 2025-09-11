@@ -11,7 +11,31 @@
         "environment": "dev",
         "owner": "infra-team"
       }
+    },
+    {
+      "name": "base",
+      "builder_type": "amazon-ebs",
+      "build_time": 1757586956,
+      "files": null,
+      "artifact_id": "ap-northeast-1:ami-053f2bc6975172e45",
+      "packer_run_uuid": "6b375584-085d-ff6a-df2e-9f929b6009e9",
+      "custom_data": {
+        "environment": "dev",
+        "owner": "infra-team"
+      }
+    },
+    {
+      "name": "base",
+      "builder_type": "amazon-ebs",
+      "build_time": 1757587404,
+      "files": null,
+      "artifact_id": "ap-northeast-1:ami-0030a0ad1a88f5eb8",
+      "packer_run_uuid": "a0d96697-380d-efd9-7a67-b430a9708fb9",
+      "custom_data": {
+        "environment": "dev",
+        "owner": "infra-team"
+      }
     }
   ],
-  "last_run_uuid": "6eaa57c4-f53c-c494-28c9-f7d8a80f42e4"
+  "last_run_uuid": "a0d96697-380d-efd9-7a67-b430a9708fb9"
 }

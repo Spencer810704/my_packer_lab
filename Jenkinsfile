@@ -17,12 +17,12 @@ pipeline {
         )
         string(
             name: 'BASE_AMI_ID',
-            defaultValue: 'ami-0b3df0f36f5b89775',
-            description: '基底 AMI ID (預設使用已安裝套件的 base image)'
+            defaultValue: '',
+            description: '基底 AMI ID (留空使用各環境配置的預設值)'
         )
         choice(
             name: 'AWS_REGION',
-            choices: ['ap-northeast-1', 'us-west-2', 'eu-west-1'],
+            choices: ['ap-northeast-1', 'ap-southeast-1', 'us-east-1', 'us-west-2', 'eu-west-1'],
             description: '選擇 AWS 區域'
         )
         choice(
@@ -110,8 +110,10 @@ pipeline {
                         validateCmd += " -var='region=${params.AWS_REGION}'"
                         validateCmd += " -var='instance_type=${params.INSTANCE_TYPE}'"
                         
-                        // 傳遞 base AMI ID
-                        validateCmd += " -var='base_ami_id=${params.BASE_AMI_ID}'"
+                        // 如果有指定 base AMI ID 則傳遞，否則使用 packer 中的預設值
+                        if (params.BASE_AMI_ID?.trim()) {
+                            validateCmd += " -var='base_ami_id=${params.BASE_AMI_ID}'"
+                        }
                         
                         validateCmd += " ."
                         
@@ -137,9 +139,13 @@ pipeline {
                         buildCmd += " -var='region=${params.AWS_REGION}'"
                         buildCmd += " -var='instance_type=${params.INSTANCE_TYPE}'"
                         
-                        // 傳遞 base AMI ID
-                        echo "使用基底 AMI: ${params.BASE_AMI_ID}"
-                        buildCmd += " -var='base_ami_id=${params.BASE_AMI_ID}'"
+                        // 如果有指定 base AMI ID 則傳遞，否則使用 packer 中的預設值
+                        if (params.BASE_AMI_ID?.trim()) {
+                            echo "使用指定的基底 AMI: ${params.BASE_AMI_ID}"
+                            buildCmd += " -var='base_ami_id=${params.BASE_AMI_ID}'"
+                        } else {
+                            echo "使用環境配置中的預設基底 AMI"
+                        }
                         
                         buildCmd += " ."
                         
