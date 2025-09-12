@@ -70,7 +70,6 @@ pipeline {
         choice(
             name: 'LOG_LEVEL',
             choices: ['INFO', 'DEBUG'],
-            defaultValue: 'INFO',
             description: 'Packer 日誌等級'
         )
     }
@@ -153,7 +152,7 @@ pipeline {
         
         stage('🚀 建構 AMI') {
             when {
-                not { params.DRY_RUN }
+                expression { !params.DRY_RUN }
             }
             steps {
                 script {
@@ -168,7 +167,7 @@ pipeline {
         
         stage('📊 處理建構結果') {
             when {
-                not { params.DRY_RUN }
+                expression { !params.DRY_RUN }
             }
             steps {
                 script {
