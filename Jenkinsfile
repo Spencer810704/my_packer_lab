@@ -187,8 +187,9 @@ pipeline {
                                     env.AMI_ID = amiId
                                     echo "🎉 AMI 建構完成: ${amiId}"
                                     
-                                    // 添加額外標籤
-                                    def enabledBlocksTag = params.ENABLED_BLOCKS.replace('[', '').replace(']', '').replace('"', '')
+                                    // 添加額外標籤 - 處理 JSON 陣列格式
+                                    def blocks = readJSON text: params.ENABLED_BLOCKS
+                                    def enabledBlocksTag = blocks.join(',')
                                     sh """
                                         aws ec2 create-tags \\
                                             --region ${params.AWS_REGION} \\
