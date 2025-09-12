@@ -131,12 +131,16 @@ build {
   }
 
 
-  # 驗證階段
+  # Docker 驗證 - 條件執行
   provisioner "shell" {
-    scripts = compact([
-      contains(var.enabled_blocks, "app-docker") ? "${var.blocks_path}/applications/docker/validate-docker.sh" : "",
-      contains(var.enabled_blocks, "app-openresty") ? "${var.blocks_path}/applications/openresty/validate-openresty.sh" : ""
-    ])
+    only   = contains(var.enabled_blocks, "app-docker") ? ["amazon-ebs.dynamic"] : []
+    script = "${var.blocks_path}/applications/docker/validate-docker.sh"
+  }
+
+  # OpenResty 驗證 - 條件執行
+  provisioner "shell" {
+    only   = contains(var.enabled_blocks, "app-openresty") ? ["amazon-ebs.dynamic"] : []
+    script = "${var.blocks_path}/applications/openresty/validate-openresty.sh"
   }
 
   # 清理階段
