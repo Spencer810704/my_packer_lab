@@ -189,7 +189,11 @@ pipeline {
                                     
                                     // 添加額外標籤 - 處理 JSON 陣列格式
                                     def blocks = readJSON text: params.ENABLED_BLOCKS
-                                    def enabledBlocksTag = blocks.join(',')
+                                    def enabledBlocksTag = ""
+                                    for (int i = 0; i < blocks.size(); i++) {
+                                        if (i > 0) enabledBlocksTag += ","
+                                        enabledBlocksTag += blocks[i]
+                                    }
                                     sh """
                                         aws ec2 create-tags \\
                                             --region ${params.AWS_REGION} \\
