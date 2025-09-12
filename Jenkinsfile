@@ -37,7 +37,7 @@ pipeline {
         
         string(
             name: 'BASE_AMI_ID',
-            defaultValue: '',
+            defaultValue: 'ami-0836e97b3d843dd82',
             description: '基底 AMI ID (必填 - 請根據您的區域和需求選擇適當的 AMI)'
         )
         

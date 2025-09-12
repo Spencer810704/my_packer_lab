@@ -107,8 +107,17 @@ build {
   name    = "dynamic-build"
   sources = ["source.amazon-ebs.dynamic"]
 
+  # 除錯資訊 - 顯示啟用的積木
+  provisioner "shell" {
+    inline = [
+      "echo '🔍 除錯資訊: 啟用的積木列表'",
+      "echo 'Enabled blocks: ${join(",", var.enabled_blocks)}'",
+      "echo 'OS Family: ${local.os_family}'"
+    ]
+  }
+
   # 系統基礎積木 - 根據選擇的基礎系統動態執行
-  # Ubuntu 20.04
+  # Ubuntu 20.04/22.04
   provisioner "shell" {
     only = contains(var.enabled_blocks, "base-ubuntu-2004") ? ["amazon-ebs.dynamic"] : []
     scripts = [
@@ -118,7 +127,7 @@ build {
     ]
   }
   
-  # Amazon Linux 2
+  # Amazon Linux 2 - 只有當明確指定時才執行
   provisioner "shell" {
     only = contains(var.enabled_blocks, "base-amazon-linux-2") ? ["amazon-ebs.dynamic"] : []
     scripts = [
