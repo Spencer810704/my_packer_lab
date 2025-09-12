@@ -118,7 +118,10 @@ build {
 
   # Ubuntu 20.04 基礎積木
   provisioner "shell" {
-    except  = !contains(var.enabled_blocks, "base-ubuntu-2004") ? ["amazon-ebs.dynamic"] : []
+    except = !contains(var.enabled_blocks, "base-ubuntu-2004") ? ["amazon-ebs.dynamic"] : []
+    environment_vars = [
+      "DEBIAN_FRONTEND=noninteractive"
+    ]
     scripts = [
       "${var.blocks_path}/base/ubuntu-2004/wait-cloud-init.sh",
       "${var.blocks_path}/base/ubuntu-2004/system-update.sh", 
@@ -138,6 +141,9 @@ build {
   # Docker 積木安裝
   provisioner "shell" {
     except = !contains(var.enabled_blocks, "app-docker") ? ["amazon-ebs.dynamic"] : []
+    environment_vars = [
+      "DEBIAN_FRONTEND=noninteractive"
+    ]
     scripts = [
       "${var.blocks_path}/applications/docker/scripts/${local.os_family}/install.sh",
       "${var.blocks_path}/applications/docker/scripts/${local.os_family}/configure.sh"
@@ -147,6 +153,9 @@ build {
   # OpenResty 積木安裝
   provisioner "shell" {
     except = !contains(var.enabled_blocks, "app-openresty") ? ["amazon-ebs.dynamic"] : []
+    environment_vars = [
+      "DEBIAN_FRONTEND=noninteractive"
+    ]
     scripts = [
       "${var.blocks_path}/applications/openresty/scripts/${local.os_family}/install.sh",
       "${var.blocks_path}/applications/openresty/scripts/common/configure.sh",
@@ -178,6 +187,9 @@ build {
   # 系統清理 - Ubuntu
   provisioner "shell" {
     except = !contains(var.enabled_blocks, "base-ubuntu-2004") ? ["amazon-ebs.dynamic"] : []
+    environment_vars = [
+      "DEBIAN_FRONTEND=noninteractive"
+    ]
     script = "${var.blocks_path}/base/ubuntu-2004/cleanup.sh"
   }
 
