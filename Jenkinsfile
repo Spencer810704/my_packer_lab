@@ -38,7 +38,7 @@ pipeline {
         string(
             name: 'BASE_AMI_ID',
             defaultValue: '',
-            description: '基底 AMI ID (留空使用系統預設)'
+            description: '基底 AMI ID (必填 - 請根據您的區域和需求選擇適當的 AMI)'
         )
         
         // 📋 元資料參數
@@ -115,6 +115,11 @@ pipeline {
                     def hasBase = blocks.any { it.startsWith('base-') }
                     if (!hasBase) {
                         error("❌ 必須包含至少一個基礎系統積木 (base-*)")
+                    }
+                    
+                    // 檢查必填參數
+                    if (!params.BASE_AMI_ID?.trim()) {
+                        error("❌ BASE_AMI_ID 是必填參數，請提供基底 AMI ID")
                     }
                 }
             }
@@ -251,10 +256,8 @@ def buildPackerCommand(action) {
     cmd += " -var='instance_type=${params.INSTANCE_TYPE}'"
     cmd += " -var='owner=${params.OWNER}'"
     
-    // 可選變數
-    if (params.BASE_AMI_ID?.trim()) {
-        cmd += " -var='base_ami_id=${params.BASE_AMI_ID}'"
-    }
+    // 必填變數
+    cmd += " -var='base_ami_id=${params.BASE_AMI_ID}'"
     
     if (params.BUILD_NAME?.trim()) {
         cmd += " -var='build_name=${params.BUILD_NAME}'"

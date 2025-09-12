@@ -25,8 +25,7 @@ variable "instance_type" {
 
 variable "base_ami_id" {
   type        = string
-  default     = "ami-0030a0ad1a88f5eb8"
-  description = "Base AMI ID (Ubuntu 20.04 LTS)"
+  description = "Base AMI ID (required)"
 }
 
 variable "ssh_username" {
@@ -61,11 +60,26 @@ variable "blocks_path" {
   default     = "../blocks"
 }
 
-# 動態生成 AMI 名稱
+# OS 家族識別（從基礎積木推斷）
+variable "os_family" {
+  type        = string
+  default     = ""
+  description = "OS family (debian, rhel, amazon-linux) - auto-detected from base block"
+}
+
+# 動態生成 AMI 名稱和 OS 偵測
 locals {
   timestamp   = formatdate("YYYYMMDD-HHmmss", timestamp())
   build_name  = var.build_name != "" ? var.build_name : "dynamic"
   ami_name    = "${var.env}-${local.build_name}-${local.timestamp}"
+  
+  # 從啟用的積木推斷 OS 家族
+  os_family = var.os_family != "" ? var.os_family : (
+    contains(var.enabled_blocks, "base-ubuntu-2004") || contains(var.enabled_blocks, "base-ubuntu-2204") ? "debian" :
+    contains(var.enabled_blocks, "base-amazon-linux-2") || contains(var.enabled_blocks, "base-amazon-linux-2023") ? "amazon-linux" :
+    contains(var.enabled_blocks, "base-rhel-8") || contains(var.enabled_blocks, "base-centos-8") ? "rhel" :
+    "debian" # 預設值
+  )
 }
 
 # AMI 來源配置
@@ -93,12 +107,24 @@ build {
   name    = "dynamic-build"
   sources = ["source.amazon-ebs.dynamic"]
 
-  # 系統基礎積木 - 總是執行
+  # 系統基礎積木 - 根據選擇的基礎系統動態執行
+  # Ubuntu 20.04
   provisioner "shell" {
+    only = contains(var.enabled_blocks, "base-ubuntu-2004") ? ["amazon-ebs.dynamic"] : []
     scripts = [
       "${var.blocks_path}/base/ubuntu-2004/wait-cloud-init.sh",
       "${var.blocks_path}/base/ubuntu-2004/system-update.sh",
       "${var.blocks_path}/base/ubuntu-2004/install-packages.sh"
+    ]
+  }
+  
+  # Amazon Linux 2
+  provisioner "shell" {
+    only = contains(var.enabled_blocks, "base-amazon-linux-2") ? ["amazon-ebs.dynamic"] : []
+    scripts = [
+      "${var.blocks_path}/base/amazon-linux-2/wait-cloud-init.sh",
+      "${var.blocks_path}/base/amazon-linux-2/system-update.sh",
+      "${var.blocks_path}/base/amazon-linux-2/install-packages.sh"
     ]
   }
 
@@ -106,8 +132,8 @@ build {
   provisioner "shell" {
     only    = contains(var.enabled_blocks, "app-docker") ? ["amazon-ebs.dynamic"] : []
     scripts = [
-      "${var.blocks_path}/applications/docker/install-docker.sh",
-      "${var.blocks_path}/applications/docker/configure-docker.sh"
+      "${var.blocks_path}/applications/docker/scripts/${local.os_family}/install.sh",
+      "${var.blocks_path}/applications/docker/scripts/${local.os_family}/configure.sh"
     ]
   }
 
@@ -115,9 +141,9 @@ build {
   provisioner "shell" {
     only    = contains(var.enabled_blocks, "app-openresty") ? ["amazon-ebs.dynamic"] : []
     scripts = [
-      "${var.blocks_path}/applications/openresty/install-openresty.sh",
-      "${var.blocks_path}/applications/openresty/setup-nginx.sh",
-      "${var.blocks_path}/applications/openresty/add-test-page.sh"
+      "${var.blocks_path}/applications/openresty/scripts/${local.os_family}/install.sh",
+      "${var.blocks_path}/applications/openresty/scripts/common/configure.sh",
+      "${var.blocks_path}/applications/openresty/scripts/common/add-test-page.sh"
     ]
   }
 
@@ -134,18 +160,26 @@ build {
   # Docker 驗證 - 條件執行
   provisioner "shell" {
     only   = contains(var.enabled_blocks, "app-docker") ? ["amazon-ebs.dynamic"] : []
-    script = "${var.blocks_path}/applications/docker/validate-docker.sh"
+    script = "${var.blocks_path}/applications/docker/scripts/common/validate.sh"
   }
 
   # OpenResty 驗證 - 條件執行
   provisioner "shell" {
     only   = contains(var.enabled_blocks, "app-openresty") ? ["amazon-ebs.dynamic"] : []
-    script = "${var.blocks_path}/applications/openresty/validate-openresty.sh"
+    script = "${var.blocks_path}/applications/openresty/scripts/common/validate.sh"
   }
 
-  # 清理階段
+  # 清理階段 - 根據基礎系統選擇
+  # Ubuntu 清理
   provisioner "shell" {
+    only   = contains(var.enabled_blocks, "base-ubuntu-2004") ? ["amazon-ebs.dynamic"] : []
     script = "${var.blocks_path}/base/ubuntu-2004/cleanup.sh"
+  }
+  
+  # Amazon Linux 清理
+  provisioner "shell" {
+    only   = contains(var.enabled_blocks, "base-amazon-linux-2") ? ["amazon-ebs.dynamic"] : []
+    script = "${var.blocks_path}/base/amazon-linux-2/cleanup.sh"
   }
 
   # 建構結果輸出 - 簡化版供 Jenkins 使用

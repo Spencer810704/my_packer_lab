@@ -4,7 +4,9 @@
       "Bash(cp:*)",
       "Bash(chmod:*)",
       "Bash(python3:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(tree:*)",
+      "Bash(mkdir:*)"
     ],
     "deny": []
   }

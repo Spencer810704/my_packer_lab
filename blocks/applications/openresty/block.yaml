@@ -29,10 +29,29 @@ block:
       default: false
       description: "Enable SSL/TLS support"
       
-  scripts:
-    install: "install-openresty.sh"
-    configure: "setup-nginx.sh"
-    test_page: "add-test-page.sh"
-    validate: "validate-openresty.sh"
+  os_support:
+    - os_family: "debian"
+      os_versions: ["20.04", "22.04"]
+      scripts:
+        install: "scripts/debian/install.sh"
+        configure: "scripts/common/configure.sh"
+        test_page: "scripts/common/add-test-page.sh"
+        validate: "scripts/common/validate.sh"
+    
+    - os_family: "rhel"
+      os_versions: ["7", "8", "9"]
+      scripts:
+        install: "scripts/rhel/install.sh"
+        configure: "scripts/common/configure.sh"
+        test_page: "scripts/common/add-test-page.sh"
+        validate: "scripts/common/validate.sh"
+    
+    - os_family: "amazon-linux"
+      os_versions: ["2", "2023"]
+      scripts:
+        install: "scripts/amazon-linux/install.sh"
+        configure: "scripts/common/configure.sh"
+        test_page: "scripts/common/add-test-page.sh"
+        validate: "scripts/common/validate.sh"
     
   execution_order: 60

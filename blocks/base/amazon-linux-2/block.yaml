@@ -1,26 +1,26 @@
 block:
-  id: "base-ubuntu-2004"
-  name: "Ubuntu 20.04 LTS Base System"
+  id: "base-amazon-linux-2"
+  name: "Amazon Linux 2 Base System"
   category: "base"
-  version: "20.04"
-  description: "Ubuntu 20.04 LTS with basic system configuration"
+  version: "2"
+  description: "Amazon Linux 2 with basic system configuration"
   
   os_info:
-    family: "debian"
-    version: "20.04"
-    ssh_username: "ubuntu"
-    package_manager: "apt"
+    family: "amazon-linux"
+    version: "2"
+    ssh_username: "ec2-user"
+    package_manager: "yum"
   
   provides:
     - "linux-os"
-    - "ubuntu"
+    - "amazon-linux"
     - "systemd"
-    - "os-family:debian"
+    - "os-family:amazon-linux"
     
   parameters:
     - name: "ssh_username"
       type: "string"
-      default: "ubuntu"
+      default: "ec2-user"
       description: "SSH username for instance access"
       
   scripts:
