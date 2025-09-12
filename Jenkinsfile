@@ -182,7 +182,7 @@ pipeline {
                             def manifest = readJSON file: 'packer-manifest.json'
                             if (manifest.builds?.size() > 0) {
                                 def build = manifest.builds[0]
-                                def amiId = build.artifact_id?.split(':')?.get(1)
+                                def amiId = build.artifact_id?.split(':')[1]
                                 if (amiId) {
                                     env.AMI_ID = amiId
                                     echo "🎉 AMI 建構完成: ${amiId}"
