@@ -1,0 +1,30 @@
+block:
+  id: "config-security"
+  name: "Security Hardening"
+  category: "configuration"
+  version: "1.0"
+  description: "Basic security hardening with firewall configuration"
+  
+  requires:
+    - "linux-os"
+    
+  provides:
+    - "firewall"
+    - "security-hardening"
+    
+  parameters:
+    - name: "enable_fail2ban"
+      type: "boolean"
+      default: true
+      description: "Install and configure fail2ban"
+      
+    - name: "allowed_ports"
+      type: "array"
+      default: [22, 80, 443]
+      description: "Ports to allow through firewall"
+      
+  scripts:
+    firewall: "setup-firewall.sh"
+    hardening: "security-hardening.sh"
+    
+  execution_order: 80

@@ -1,0 +1,25 @@
+block:
+  id: "base-ubuntu-2004"
+  name: "Ubuntu 20.04 LTS Base System"
+  category: "base"
+  version: "20.04"
+  description: "Ubuntu 20.04 LTS with basic system configuration"
+  
+  provides:
+    - "linux-os"
+    - "ubuntu"
+    - "systemd"
+    
+  parameters:
+    - name: "ssh_username"
+      type: "string"
+      default: "ubuntu"
+      description: "SSH username for instance access"
+      
+  scripts:
+    wait: "wait-cloud-init.sh"
+    update: "system-update.sh"
+    packages: "install-packages.sh"
+    cleanup: "cleanup.sh"
+    
+  execution_order: 1

@@ -1,0 +1,38 @@
+block:
+  id: "app-openresty"
+  name: "OpenResty Web Server"
+  category: "application"
+  version: "1.21.4"
+  description: "High-performance web server based on Nginx with Lua support"
+  
+  requires:
+    - "linux-os"
+    
+  provides:
+    - "web-server"
+    - "nginx"
+    - "lua-runtime"
+    
+  parameters:
+    - name: "version"
+      type: "string"
+      default: "1.21.4"
+      description: "OpenResty version"
+      
+    - name: "port"
+      type: "number"
+      default: 80
+      description: "HTTP port"
+      
+    - name: "enable_ssl"
+      type: "boolean"
+      default: false
+      description: "Enable SSL/TLS support"
+      
+  scripts:
+    install: "install-openresty.sh"
+    configure: "setup-nginx.sh"
+    test_page: "add-test-page.sh"
+    validate: "validate-openresty.sh"
+    
+  execution_order: 60

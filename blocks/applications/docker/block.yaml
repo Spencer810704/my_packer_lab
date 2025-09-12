@@ -1,0 +1,31 @@
+block:
+  id: "app-docker"
+  name: "Docker Container Runtime"
+  category: "application"
+  version: "latest"
+  description: "Docker container runtime with docker-compose"
+  
+  requires:
+    - "linux-os"
+    
+  provides:
+    - "container-runtime"
+    - "docker"
+    
+  parameters:
+    - name: "version"
+      type: "string"
+      default: "latest"
+      description: "Docker version to install"
+      
+    - name: "enable_docker_compose"
+      type: "boolean"
+      default: true
+      description: "Install docker-compose"
+      
+  scripts:
+    install: "install-docker.sh"
+    configure: "configure-docker.sh"
+    validate: "validate-docker.sh"
+    
+  execution_order: 50
