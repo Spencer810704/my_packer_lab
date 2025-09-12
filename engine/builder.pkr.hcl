@@ -116,10 +116,9 @@ build {
     ]
   }
 
-  # 系統基礎積木 - 根據選擇的基礎系統動態執行
-  # Ubuntu 20.04/22.04
+  # 系統基礎積木 - Ubuntu 20.04/22.04 
   provisioner "shell" {
-    only = contains(var.enabled_blocks, "base-ubuntu-2004") ? ["amazon-ebs.dynamic"] : []
+    only = contains(var.enabled_blocks, "base-ubuntu-2004") ? ["amazon-ebs.dynamic"] : null
     scripts = [
       "${var.blocks_path}/base/ubuntu-2004/wait-cloud-init.sh",
       "${var.blocks_path}/base/ubuntu-2004/system-update.sh",
@@ -127,9 +126,9 @@ build {
     ]
   }
   
-  # Amazon Linux 2 - 只有當明確指定時才執行
+  # 系統基礎積木 - Amazon Linux 2
   provisioner "shell" {
-    only = contains(var.enabled_blocks, "base-amazon-linux-2") ? ["amazon-ebs.dynamic"] : []
+    only = contains(var.enabled_blocks, "base-amazon-linux-2") ? ["amazon-ebs.dynamic"] : null
     scripts = [
       "${var.blocks_path}/base/amazon-linux-2/wait-cloud-init.sh",
       "${var.blocks_path}/base/amazon-linux-2/system-update.sh",
@@ -139,7 +138,7 @@ build {
 
   # Docker 積木 - 條件執行
   provisioner "shell" {
-    only    = contains(var.enabled_blocks, "app-docker") ? ["amazon-ebs.dynamic"] : []
+    only    = contains(var.enabled_blocks, "app-docker") ? ["amazon-ebs.dynamic"] : null
     scripts = [
       "${var.blocks_path}/applications/docker/scripts/${local.os_family}/install.sh",
       "${var.blocks_path}/applications/docker/scripts/${local.os_family}/configure.sh"
@@ -148,7 +147,7 @@ build {
 
   # OpenResty 積木 - 條件執行
   provisioner "shell" {
-    only    = contains(var.enabled_blocks, "app-openresty") ? ["amazon-ebs.dynamic"] : []
+    only    = contains(var.enabled_blocks, "app-openresty") ? ["amazon-ebs.dynamic"] : null
     scripts = [
       "${var.blocks_path}/applications/openresty/scripts/${local.os_family}/install.sh",
       "${var.blocks_path}/applications/openresty/scripts/common/configure.sh",
@@ -158,7 +157,7 @@ build {
 
   # 安全配置積木 - 條件執行
   provisioner "shell" {
-    only    = contains(var.enabled_blocks, "config-security") ? ["amazon-ebs.dynamic"] : []
+    only    = contains(var.enabled_blocks, "config-security") ? ["amazon-ebs.dynamic"] : null
     scripts = [
       "${var.blocks_path}/configurations/security/setup-firewall.sh",
       "${var.blocks_path}/configurations/security/security-hardening.sh"
@@ -168,26 +167,25 @@ build {
 
   # Docker 驗證 - 條件執行
   provisioner "shell" {
-    only   = contains(var.enabled_blocks, "app-docker") ? ["amazon-ebs.dynamic"] : []
+    only   = contains(var.enabled_blocks, "app-docker") ? ["amazon-ebs.dynamic"] : null
     script = "${var.blocks_path}/applications/docker/scripts/common/validate.sh"
   }
 
   # OpenResty 驗證 - 條件執行
   provisioner "shell" {
-    only   = contains(var.enabled_blocks, "app-openresty") ? ["amazon-ebs.dynamic"] : []
+    only   = contains(var.enabled_blocks, "app-openresty") ? ["amazon-ebs.dynamic"] : null
     script = "${var.blocks_path}/applications/openresty/scripts/common/validate.sh"
   }
 
-  # 清理階段 - 根據基礎系統選擇
-  # Ubuntu 清理
+  # 清理階段 - Ubuntu
   provisioner "shell" {
-    only   = contains(var.enabled_blocks, "base-ubuntu-2004") ? ["amazon-ebs.dynamic"] : []
+    only   = contains(var.enabled_blocks, "base-ubuntu-2004") ? ["amazon-ebs.dynamic"] : null
     script = "${var.blocks_path}/base/ubuntu-2004/cleanup.sh"
   }
   
-  # Amazon Linux 清理
+  # 清理階段 - Amazon Linux
   provisioner "shell" {
-    only   = contains(var.enabled_blocks, "base-amazon-linux-2") ? ["amazon-ebs.dynamic"] : []
+    only   = contains(var.enabled_blocks, "base-amazon-linux-2") ? ["amazon-ebs.dynamic"] : null
     script = "${var.blocks_path}/base/amazon-linux-2/cleanup.sh"
   }
 
