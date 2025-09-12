@@ -188,14 +188,15 @@ pipeline {
                                     echo "🎉 AMI 建構完成: ${amiId}"
                                     
                                     // 添加額外標籤
+                                    def enabledBlocksTag = params.ENABLED_BLOCKS.replace('[', '').replace(']', '').replace('"', '')
                                     sh """
                                         aws ec2 create-tags \\
                                             --region ${params.AWS_REGION} \\
                                             --resources ${amiId} \\
                                             --tags \\
                                                 Key=JenkinsBuild,Value=${BUILD_NUMBER} \\
-                                                Key=Requester,Value=${params.REQUESTER} \\
-                                                Key=EnabledBlocks,Value='${params.ENABLED_BLOCKS}' \\
+                                                Key=Requester,Value='${params.REQUESTER ?: 'Manual'}' \\
+                                                Key=EnabledBlocks,Value='${enabledBlocksTag}' \\
                                                 Key=BuildDate,Value=${new Date().format('yyyy-MM-dd')}
                                     """
                                 }
