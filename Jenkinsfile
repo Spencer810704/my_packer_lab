@@ -187,7 +187,7 @@ pipeline {
                                     env.AMI_ID = amiId
                                     echo "🎉 AMI 建構完成: ${amiId}"
                                     
-                                    // 添加額外標籤 - 簡單字串處理
+                                    // 添加額外標籤 - 使用單獨的標籤命令
                                     // 移除 JSON 格式的方括號和引號，只保留逗號分隔的值
                                     def enabledBlocksTag = params.ENABLED_BLOCKS
                                         .replaceAll('\\[|\\]', '')  // 移除方括號
@@ -195,16 +195,11 @@ pipeline {
                                         .replaceAll("'", '')         // 移除單引號
                                         .trim()
                                     
-                                    sh """
-                                        aws ec2 create-tags \\
-                                            --region ${params.AWS_REGION} \\
-                                            --resources ${amiId} \\
-                                            --tags \\
-                                                Key=JenkinsBuild,Value=${BUILD_NUMBER} \\
-                                                Key=Requester,Value="${params.REQUESTER ?: 'Manual'}" \\
-                                                Key=EnabledBlocks,Value="${enabledBlocksTag}" \\
-                                                Key=BuildDate,Value=${new Date().format('yyyy-MM-dd')}
-                                    """
+                                    // 分開執行每個標籤，避免解析問題
+                                    sh "aws ec2 create-tags --region ${params.AWS_REGION} --resources ${amiId} --tags Key=JenkinsBuild,Value=${BUILD_NUMBER}"
+                                    sh "aws ec2 create-tags --region ${params.AWS_REGION} --resources ${amiId} --tags Key=Requester,Value='${params.REQUESTER ?: 'Manual'}'"
+                                    sh "aws ec2 create-tags --region ${params.AWS_REGION} --resources ${amiId} --tags 'Key=EnabledBlocks,Value=${enabledBlocksTag}'"
+                                    sh "aws ec2 create-tags --region ${params.AWS_REGION} --resources ${amiId} --tags Key=BuildDate,Value=${new Date().format('yyyy-MM-dd')}"
                                 }
                             }
                         }
