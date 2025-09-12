@@ -144,6 +144,7 @@ build {
     environment_vars = [
       "DEBIAN_FRONTEND=noninteractive"
     ]
+    expect_disconnect = true
     scripts = [
       "${var.blocks_path}/applications/docker/scripts/${local.os_family}/install.sh",
       "${var.blocks_path}/applications/docker/scripts/${local.os_family}/configure.sh"
@@ -166,6 +167,10 @@ build {
   # 安全配置積木
   provisioner "shell" {
     except = !contains(var.enabled_blocks, "config-security") ? ["amazon-ebs.dynamic"] : []
+    environment_vars = [
+      "DEBIAN_FRONTEND=noninteractive"
+    ]
+    expect_disconnect = true
     scripts = [
       "${var.blocks_path}/configurations/security/setup-firewall.sh",
       "${var.blocks_path}/configurations/security/security-hardening.sh"
