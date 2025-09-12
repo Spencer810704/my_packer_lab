@@ -187,21 +187,22 @@ pipeline {
                                     env.AMI_ID = amiId
                                     echo "🎉 AMI 建構完成: ${amiId}"
                                     
-                                    // 添加額外標籤 - 處理 JSON 陣列格式
-                                    def blocks = readJSON text: params.ENABLED_BLOCKS
-                                    def enabledBlocksTag = ""
-                                    for (int i = 0; i < blocks.size(); i++) {
-                                        if (i > 0) enabledBlocksTag += ","
-                                        enabledBlocksTag += blocks[i]
-                                    }
+                                    // 添加額外標籤 - 簡單字串處理
+                                    // 移除 JSON 格式的方括號和引號，只保留逗號分隔的值
+                                    def enabledBlocksTag = params.ENABLED_BLOCKS
+                                        .replaceAll('\\[|\\]', '')  // 移除方括號
+                                        .replaceAll('"', '')         // 移除引號
+                                        .replaceAll("'", '')         // 移除單引號
+                                        .trim()
+                                    
                                     sh """
                                         aws ec2 create-tags \\
                                             --region ${params.AWS_REGION} \\
                                             --resources ${amiId} \\
                                             --tags \\
                                                 Key=JenkinsBuild,Value=${BUILD_NUMBER} \\
-                                                Key=Requester,Value='${params.REQUESTER ?: 'Manual'}' \\
-                                                Key=EnabledBlocks,Value='${enabledBlocksTag}' \\
+                                                Key=Requester,Value="${params.REQUESTER ?: 'Manual'}" \\
+                                                Key=EnabledBlocks,Value="${enabledBlocksTag}" \\
                                                 Key=BuildDate,Value=${new Date().format('yyyy-MM-dd')}
                                     """
                                 }
