@@ -187,21 +187,51 @@ pipeline {
                                     env.AMI_ID = amiId
                                     echo "🎉 AMI 建構完成: ${amiId}"
                                     
-                                    // 添加額外標籤 - 調試並修復字串格式
-                                    echo "原始 ENABLED_BLOCKS: ${params.ENABLED_BLOCKS}"
-                                    def enabledBlocksTag = params.ENABLED_BLOCKS.toString()
-                                        .replace('[', '')
-                                        .replace(']', '')
-                                        .replace('"', '')
-                                        .replace("'", '')
-                                        .replace(' ', '')
-                                    echo "處理後的標籤: ${enabledBlocksTag}"
+                                    // 添加額外標籤 - 分類處理不同類型的積木
+                                    def blocks = readJSON text: params.ENABLED_BLOCKS
+                                    def baseBlocks = []
+                                    def appBlocks = []
+                                    def configBlocks = []
+                                    def customBlocks = []
                                     
-                                    // 分開執行每個標籤，避免解析問題
+                                    // 分類積木
+                                    blocks.each { block ->
+                                        if (block.startsWith('base-')) {
+                                            baseBlocks.add(block.replace('base-', ''))
+                                        } else if (block.startsWith('app-')) {
+                                            appBlocks.add(block.replace('app-', ''))
+                                        } else if (block.startsWith('config-')) {
+                                            configBlocks.add(block.replace('config-', ''))
+                                        } else {
+                                            customBlocks.add(block)
+                                        }
+                                    }
+                                    
+                                    // 基本標籤
                                     sh "aws ec2 create-tags --region ${params.AWS_REGION} --resources ${amiId} --tags Key=JenkinsBuild,Value=${BUILD_NUMBER}"
                                     sh "aws ec2 create-tags --region ${params.AWS_REGION} --resources ${amiId} --tags Key=Requester,Value='${params.REQUESTER ?: 'Manual'}'"
-                                    sh "aws ec2 create-tags --region ${params.AWS_REGION} --resources ${amiId} --tags Key=EnabledBlocks,Value='${enabledBlocksTag}'"
                                     sh "aws ec2 create-tags --region ${params.AWS_REGION} --resources ${amiId} --tags Key=BuildDate,Value=${new Date().format('yyyy-MM-dd')}"
+                                    
+                                    // 根據積木類型添加標籤（使用底線分隔多個值）
+                                    if (baseBlocks.size() > 0) {
+                                        def baseTag = baseBlocks.join('_')  // 基礎系統（如果有多個用底線連接）
+                                        sh "aws ec2 create-tags --region ${params.AWS_REGION} --resources ${amiId} --tags Key=Base,Value='${baseTag}'"
+                                    }
+                                    
+                                    if (appBlocks.size() > 0) {
+                                        def appsTag = appBlocks.join('_')  // 多個應用用底線連接
+                                        sh "aws ec2 create-tags --region ${params.AWS_REGION} --resources ${amiId} --tags Key=Applications,Value='${appsTag}'"
+                                    }
+                                    
+                                    if (configBlocks.size() > 0) {
+                                        def configTag = configBlocks.join('_')  // 多個配置用底線連接
+                                        sh "aws ec2 create-tags --region ${params.AWS_REGION} --resources ${amiId} --tags Key=Configurations,Value='${configTag}'"
+                                    }
+                                    
+                                    if (customBlocks.size() > 0) {
+                                        def customTag = customBlocks.join('_')
+                                        sh "aws ec2 create-tags --region ${params.AWS_REGION} --resources ${amiId} --tags Key=Custom,Value='${customTag}'"
+                                    }
                                 }
                             }
                         }
