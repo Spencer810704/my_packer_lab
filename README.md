@@ -1,302 +1,318 @@
-# Packer AMI Building Project
+# 動態積木式 AMI 建構系統
 
-這個專案使用 Packer 建構 AWS AMI，支援多個環境和專案類型。提供手動執行和 Jenkins CI/CD 兩種方式。
+這個專案使用 Packer 實現動態積木式 AMI 建構，支援彈性組合不同的系統組件、應用程式和配置。通過 Jenkins Pipeline 提供標準化的建構流程。
 
-## 專案結構
+## 🚀 核心特色
+
+- **🧩 動態積木組合**：模組化設計，可彈性組合不同積木
+- **🔄 多作業系統支援**：Ubuntu、Amazon Linux、RHEL 系列
+- **⚙️ 智能條件執行**：只執行選擇的積木相關腳本
+- **🏷️ 自動標籤分類**：智能分類並標記不同類型的積木
+- **🔐 安全性內建**：防火牆、fail2ban、系統加固
+- **📊 Jenkins 整合**：標準化建構流程和結果追蹤
+
+## 📁 專案結構
 
 ```
 packer/
 ├── README.md                     # 專案說明文件
 ├── Jenkinsfile                   # Jenkins Pipeline 配置
-├── base/                         # 基礎 AMI 建構
-│   ├── plugins.pkr.hcl          # Packer plugins 定義
-│   ├── variables.pkr.hcl        # 變數定義
-│   ├── source.pkr.hcl           # AMI 來源配置
-│   ├── build.pkr.hcl            # 建構流程定義
-│   ├── common.pkrvars.hcl       # 共用變數值
-│   ├── env/                     # 環境特定變數
-│   │   ├── dev.pkrvars.hcl
-│   │   ├── stg.pkrvars.hcl
-│   │   └── prod.pkrvars.hcl
-│   ├── scripts/                 # 部署腳本
-│   └── metadata/                # AMI 建構結果
-└── mps-openresty/               # OpenResty Web Server AMI
-    ├── plugins.pkr.hcl          # Packer plugins 定義
-    ├── variables.pkr.hcl        # 變數定義
-    ├── source.pkr.hcl           # AMI 來源配置
-    ├── build.pkr.hcl            # 建構流程定義
-    ├── common.pkrvars.hcl       # 共用變數值
-    ├── env/                     # 環境特定變數
-    │   ├── dev.pkrvars.hcl
-    │   ├── stg.pkrvars.hcl
-    │   └── prod.pkrvars.hcl
-    ├── scripts/                 # 部署腳本
-    └── metadata/                # AMI 建構結果
+├── engine/                       # 動態建構引擎
+│   └── builder.pkr.hcl           # 主要 Packer 配置檔案
+└── blocks/                       # 積木庫
+    ├── base/                     # 基礎系統積木
+    │   ├── ubuntu-2004/          # Ubuntu 20.04 基礎積木
+    │   ├── amazon-linux-2/       # Amazon Linux 2 基礎積木
+    │   └── rhel-8/              # RHEL 8 基礎積木
+    ├── applications/             # 應用程式積木
+    │   ├── docker/               # Docker 容器引擎
+    │   │   ├── block.yaml        # 積木配置檔案
+    │   │   └── scripts/          # 多作業系統腳本
+    │   │       ├── debian/       # Debian/Ubuntu 專用
+    │   │       ├── rhel/         # RHEL 系列專用
+    │   │       ├── amazon-linux/ # Amazon Linux 專用
+    │   │       └── common/       # 共用腳本
+    │   └── openresty/            # OpenResty Web Server
+    │       ├── block.yaml
+    │       └── scripts/
+    └── configurations/           # 配置積木
+        ├── security/             # 安全配置
+        ├── monitoring/           # 監控配置
+        └── logging/              # 日誌配置
 ```
 
-## 支援的專案類型
+## 🧩 積木系統說明
 
-### 1. base
-基礎 AMI，包含基本的系統配置和套件，作為其他 AMI 的基底。
+### 積木類型
 
-**特色：**
-- Ubuntu 20.04 LTS 基礎
-- 基本系統更新和套件安裝
+#### 1. 基礎系統積木 (Base Blocks)
+提供作業系統基礎環境，每次建構必須選擇一個基礎積木。
+
+**可用積木：**
+- `base-ubuntu-2004`: Ubuntu 20.04 LTS 基礎系統
+- `base-ubuntu-2204`: Ubuntu 22.04 LTS 基礎系統  
+- `base-amazon-linux-2`: Amazon Linux 2 基礎系統
+- `base-rhel-8`: Red Hat Enterprise Linux 8 基礎系統
+
+**包含功能：**
+- 系統更新和基本套件安裝
 - 系統優化配置
+- 基礎安全設定
 
-### 2. mps-openresty
-基於 base AMI 建構的 Web Server AMI，包含 OpenResty + Docker 環境。
+#### 2. 應用程式積木 (Application Blocks)  
+提供特定應用程式和服務，可選擇多個應用積木。
 
-**特色：**
-- 基於 base AMI
-- OpenResty (Nginx + Lua)
-- Docker 容器運行環境
-- 預配置的防火牆設定
+**可用積木：**
+- `app-docker`: Docker 容器引擎 + Docker Compose
+- `app-openresty`: OpenResty Web Server (Nginx + Lua)
+- `app-nginx`: 標準 Nginx Web Server
+- `app-nodejs`: Node.js 運行環境
 
-## 使用方式
+**功能特色：**
+- 多作業系統支援腳本
+- 自動服務啟動配置
+- 版本驗證和健康檢查
 
-### 方式一：手動執行
+#### 3. 配置積木 (Configuration Blocks)
+提供系統配置和安全加固，可選擇多個配置積木。
 
-#### 前置需求
-```bash
-# 安裝 Packer
-curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
-sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
-sudo apt-get update && sudo apt-get install packer
+**可用積木：**
+- `config-security`: 防火牆 + fail2ban + 系統加固
+- `config-monitoring`: 系統監控和日誌收集
+- `config-logging`: 中央化日誌配置
+- `config-backup`: 自動備份配置
 
-# 設定 AWS 認證
-aws configure
-# 或使用環境變數
-export AWS_ACCESS_KEY_ID="your-access-key"
-export AWS_SECRET_ACCESS_KEY="your-secret-key"
-export AWS_DEFAULT_REGION="ap-northeast-1"
+**安全功能：**
+- UFW 防火牆配置
+- fail2ban 入侵防護
+- SSH 安全加固
+- 系統權限優化
+
+## 🏷️ 智能標籤系統
+
+AMI 建構完成後，系統會自動根據選擇的積木類型建立分類標籤：
+
+### 標籤結構
+```yaml
+# 基本標籤
+JenkinsBuild: "建構編號"
+Requester: "請求者"
+BuildDate: "建構日期"
+
+# 積木分類標籤（根據選擇的積木動態生成）
+Base: "ubuntu-2004"                    # 基礎系統（單一值）
+Applications: "docker_openresty"        # 應用程式（多值用底線分隔）
+Configurations: "security_monitoring"   # 配置（多值用底線分隔）  
+Custom: "special_tool"                  # 自定義積木
 ```
 
-#### 執行步驟
+### 標籤範例
+**選擇積木：** `["base-ubuntu-2004", "app-docker", "app-nginx", "config-security", "config-monitoring"]`
 
-1. **進入專案目錄**
-   ```bash
-   cd mps-openresty  # 或 cd base
-   ```
+**產生標籤：**
+- `Base: ubuntu-2004`
+- `Applications: docker_nginx`
+- `Configurations: security_monitoring`
 
-2. **初始化 Packer**
-   ```bash
-   packer init .
-   ```
+## 📋 使用方式
 
-3. **驗證配置**
-   ```bash
-   # 使用環境配置檔案
-   packer validate -var-file=env/dev.pkrvars.hcl -var-file=common.pkrvars.hcl .
-   
-   # 或自訂參數
-   packer validate \
-     -var-file=env/dev.pkrvars.hcl \
-     -var-file=common.pkrvars.hcl \
-     -var="base_ami_id=ami-0030a0ad1a88f5eb8" \
-     .
-   ```
+### Jenkins Pipeline 執行
 
-4. **建構 AMI**
-   ```bash
-   # 使用環境配置檔案
-   packer build -var-file=env/dev.pkrvars.hcl -var-file=common.pkrvars.hcl .
-   
-   # 或自訂參數
-   packer build \
-     -var-file=env/dev.pkrvars.hcl \
-     -var-file=common.pkrvars.hcl \
-     -var="base_ami_id=ami-0030a0ad1a88f5eb8" \
-     -var="region=ap-northeast-1" \
-     -var="instance_type=t3.micro" \
-     .
-   ```
+#### 1. 建立 Pipeline Job
+- 在 Jenkins 中建立新的 Pipeline 專案
+- 指向此專案的 `Jenkinsfile`
 
-5. **查看建構結果**
-   ```bash
-   cat metadata/dev/dev-manifest.json
-   ```
+#### 2. 配置建構參數
 
-#### 手動執行的優點
-- ✅ 完全控制建構過程
-- ✅ 可以即時查看輸出和錯誤
-- ✅ 適合開發和測試
-- ✅ 可以使用 `-on-error=ask` 進行除錯
+| 參數 | 說明 | 範例值 |
+|------|------|--------|
+| `ENABLED_BLOCKS` | 選擇的積木列表 (JSON格式) | `["base-ubuntu-2004","app-docker","config-security"]` |
+| `ENVIRONMENT` | 目標環境 | `dev`, `stg`, `prod` |
+| `AWS_REGION` | AWS 區域 | `ap-northeast-1` |
+| `INSTANCE_TYPE` | EC2 實例類型 | `t3.micro`, `t3.small` |
+| `BASE_AMI_ID` | 基底 AMI ID (必填) | `ami-0836e97b3d843dd82` |
+| `BUILD_NAME` | 自訂建構名稱 | `webserver`, `database` |
+| `OWNER` | 資源擁有者 | `infra-team` |
+| `DRY_RUN` | 僅驗證不建構 | `false` |
 
-#### 手動執行的缺點
-- ❌ 需要手動管理環境變數
-- ❌ 需要本地安裝 Packer 和 AWS CLI
-- ❌ 沒有版本控制和審核流程
-- ❌ 容易因環境差異產生問題
+#### 3. 常用積木組合範例
 
----
+**基礎 Web Server：**
+```json
+["base-ubuntu-2004", "app-nginx", "config-security"]
+```
 
-### 方式二：Jenkins CI/CD 執行
+**Docker 開發環境：**
+```json
+["base-ubuntu-2004", "app-docker", "config-security", "config-monitoring"]
+```
 
-#### 前置需求
-1. **Jenkins 環境設定**
-   ```bash
-   # 安裝必要的 Jenkins plugins
-   - Pipeline
-   - AWS Credentials Plugin
-   - AnsiColor Plugin (選用，用於顯示彩色輸出)
-   - Pipeline Utility Steps Plugin (用於讀取 JSON)
-   ```
+**OpenResty Web Server：**
+```json
+["base-ubuntu-2004", "app-openresty", "config-security"]
+```
 
-2. **AWS 認證設定**
-   - 在 Jenkins 中設定 AWS Credentials
-   - 或確保 Jenkins 伺服器已配置 AWS CLI 認證
+**多用途應用伺服器：**
+```json
+["base-ubuntu-2004", "app-docker", "app-nginx", "config-security", "config-monitoring", "config-logging"]
+```
 
-3. **系統環境**
-   - Jenkins 伺服器需安裝 Packer
-   - Jenkins 伺服器需安裝 AWS CLI
-
-#### 使用步驟
-
-1. **建立 Pipeline Job**
-   - 在 Jenkins 中建立新的 Pipeline 專案
-   - 指向此專案的 `Jenkinsfile`
-
-2. **配置建構參數**
-   ```
-   ENVIRONMENT: dev/stg/prod         # 選擇環境
-   PROJECT_TYPE: mps-openresty       # 選擇專案類型
-   AWS_REGION: ap-northeast-1        # 選擇 AWS 區域
-   INSTANCE_TYPE: t3.micro           # 選擇實例類型
-   BASE_AMI_ID: (選填)               # 自訂基底 AMI ID
-   OWNER: infra-team                 # 資源擁有者
-   DRY_RUN: false                    # 是否只驗證不建構
-   ```
-
-3. **執行建構**
-   - 點擊 "Build with Parameters"
-   - 填入所需參數
-   - 開始建構
-
-#### Jenkins Pipeline 流程
+## 🔧 Jenkins Pipeline 流程
 
 ```mermaid
 graph TD
-    A[Checkout Code] --> B[Validate Parameters]
-    B --> C[Verify AWS Access]
-    C --> D[Packer Init]
-    D --> E[Packer Validate]
-    E --> F{DRY_RUN?}
-    F -->|Yes| G[End - Validation Only]
-    F -->|No| H[Packer Build]
-    H --> I[Extract AMI Info]
-    I --> J[Tag AMI]
-    J --> K[Build Success]
+    A[📋 驗證參數] --> B[🔧 準備建構環境]
+    B --> C[✅ Packer 驗證]
+    C --> D{🔄 DRY_RUN?}
+    D -->|Yes| E[✋ 驗證完成]
+    D -->|No| F[🚀 建構 AMI]
+    F --> G[📊 處理建構結果]
+    G --> H[🏷️ 新增 AMI 標籤]
+    H --> I[✅ 建構完成]
 ```
 
-#### Jenkins 執行的優點
-- ✅ 標準化建構流程
-- ✅ 自動化參數驗證
-- ✅ 建構歷史記錄和日誌
-- ✅ 權限控制和審核
-- ✅ 支援多環境配置
-- ✅ 自動標籤管理
-- ✅ 錯誤處理和通知
+## 🛠️ 積木開發指南
 
-#### Jenkins 執行的缺點
-- ❌ 需要設定 Jenkins 環境
-- ❌ 需要管理 Jenkins credentials
-- ❌ 除錯相對困難
-- ❌ 依賴 Jenkins 伺服器狀態
+### 新增積木的步驟
 
----
+1. **建立積木目錄結構**
+   ```bash
+   mkdir -p blocks/applications/myapp/{scripts/{debian,rhel,amazon-linux,common}}
+   ```
 
-## 兩種方式的主要差異
+2. **建立 block.yaml 配置檔案**
+   ```yaml
+   name: "myapp"
+   description: "My Application Block"
+   version: "1.0.0"
+   category: "application"
+   
+   os_support:
+     - os_family: "debian"
+       os_versions: ["20.04", "22.04"]
+       scripts:
+         install: "scripts/debian/install.sh"
+         configure: "scripts/debian/configure.sh"
+         validate: "scripts/common/validate.sh"
+   
+   dependencies:
+     - "base-ubuntu-2004"
+   
+   tags:
+     - "myapp"
+     - "web"
+   ```
 
-| 項目 | 手動執行 | Jenkins 執行 |
-|------|----------|--------------|
-| **設定複雜度** | 低 | 中高 |
-| **執行便利性** | 需要指令知識 | GUI 操作 |
-| **參數管理** | 手動指定 | 表單選擇 |
-| **錯誤除錯** | 容易 | 需查看日誌 |
-| **版本控制** | 手動管理 | 自動記錄 |
-| **多人協作** | 困難 | 容易 |
-| **權限控制** | 依賴系統權限 | 細粒度控制 |
-| **建構歷史** | 無 | 完整記錄 |
-| **通知機制** | 無 | 支援多種通知 |
-| **環境隔離** | 依賴本地環境 | 統一環境 |
+3. **編寫安裝腳本**
+   - `scripts/debian/install.sh`: Debian/Ubuntu 安裝腳本
+   - `scripts/rhel/install.sh`: RHEL 系列安裝腳本  
+   - `scripts/common/configure.sh`: 通用配置腳本
+   - `scripts/common/validate.sh`: 驗證腳本
 
-## 建議使用場景
+4. **更新 builder.pkr.hcl**
+   在主要建構檔案中新增對應的 provisioner
 
-### 手動執行適合：
-- 🔧 開發和測試階段
-- 🔧 快速驗證配置
-- 🔧 除錯和故障排查
-- 🔧 學習和實驗
-
-### Jenkins 執行適合：
-- 🏢 生產環境部署
-- 🏢 團隊協作開發
-- 🏢 定期自動建構
-- 🏢 合規和審核需求
-
-## 環境變數說明
-
-### 必要變數
-- `env`: 環境標識 (dev/stg/prod)
-- `region`: AWS 區域
-- `instance_type`: EC2 實例類型
-- `base_ami_id`: 基底 AMI ID (僅限 mps-openresty)
-
-### 選用變數
-- `ssh_username`: SSH 連接用戶名 (預設: ubuntu)
-- `owner`: 資源擁有者標籤 (預設: infra-team)
-
-## 故障排除
+## 🚨 故障排除
 
 ### 常見問題
 
-1. **AMI 名稱重複**
-   ```
-   Error: AMI name xxx is already in use
-   ```
-   **解決方案：** AMI 名稱包含時間戳，通常是因為有重複的 build 區塊
-
-2. **AWS 認證問題**
-   ```
-   Error: AWS credentials not found
-   ```
-   **解決方案：** 確認 AWS CLI 配置或環境變數設定
-
-3. **Packer plugins 下載失敗**
-   ```
-   Error: Failed to download plugin
-   ```
-   **解決方案：** 確認網路連接，執行 `packer init .`
-
-## 進階用法
-
-### 除錯模式
-```bash
-# 啟用詳細日誌
-PACKER_LOG=1 packer build -var-file=env/dev.pkrvars.hcl .
-
-# 建構失敗時保留執行個體
-packer build -on-error=ask -var-file=env/dev.pkrvars.hcl .
+#### 1. SSH 連線中斷
 ```
-
-### 自訂建構
-```bash
-# 覆蓋特定變數
-packer build \
-  -var-file=env/dev.pkrvars.hcl \
-  -var="instance_type=t3.small" \
-  -var="base_ami_id=ami-custom123" \
-  .
+Error: Script disconnected unexpectedly
 ```
+**原因：** Docker 或系統服務重啟導致 SSH 斷線  
+**解決方案：** 已在相關 provisioner 中加入 `expect_disconnect = true`
 
-## 貢獻指南
+#### 2. 條件執行問題
+```
+Error: Amazon Linux scripts running on Ubuntu
+```
+**原因：** Packer 條件執行邏輯錯誤  
+**解決方案：** 使用 `except` 指令取代 `only` 指令
+
+#### 3. 標籤格式錯誤
+```
+Error: Invalid type for parameter Tags.Value
+```
+**原因：** AWS CLI 不支援陣列格式的標籤值  
+**解決方案：** 使用智能標籤系統分類處理
+
+#### 4. debconf 前端錯誤
+```
+debconf: unable to initialize frontend: Dialog
+```
+**說明：** 這是正常現象，系統會自動降級到 Teletype 模式，不影響安裝
+
+### 除錯技巧
+
+1. **啟用詳細日誌**
+   ```bash
+   export PACKER_LOG=1
+   packer build ...
+   ```
+
+2. **檢查積木配置**
+   ```bash
+   packer validate -var 'enabled_blocks=["base-ubuntu-2004"]' builder.pkr.hcl
+   ```
+
+3. **驗證 AWS 權限**
+   ```bash
+   aws sts get-caller-identity
+   aws ec2 describe-images --owners self
+   ```
+
+## 📈 最佳實踐
+
+### 積木選擇建議
+
+1. **基礎積木選擇**
+   - 開發環境：Ubuntu 20.04（穩定、資源豐富）
+   - 生產環境：Amazon Linux 2（AWS 優化）
+   - 企業環境：RHEL 8（商業支援）
+
+2. **應用積木組合**
+   - Web 應用：`app-nginx` + `config-security`
+   - 容器化環境：`app-docker` + `config-monitoring`
+   - 高效能 Web：`app-openresty` + `config-security`
+
+3. **配置積木選擇**
+   - 生產環境必備：`config-security`
+   - 監控需求：`config-monitoring` + `config-logging`
+   - 備份需求：`config-backup`
+
+### 效能優化
+
+1. **實例類型選擇**
+   - 開發測試：`t3.micro` (1 vCPU, 1GB RAM)
+   - 小型應用：`t3.small` (2 vCPU, 2GB RAM)
+   - 中型應用：`t3.medium` (2 vCPU, 4GB RAM)
+
+2. **建構時間優化**
+   - 使用較大的實例類型進行建構
+   - 預先下載常用套件到 base 積木
+   - 並行執行無依賴的積木
+
+## 🤝 貢獻指南
 
 1. Fork 此專案
-2. 建立 feature branch
-3. 提交變更
-4. 建立 Pull Request
+2. 建立 feature branch (`git checkout -b feature/amazing-block`)
+3. 提交變更 (`git commit -m 'Add amazing block'`)
+4. Push 到分支 (`git push origin feature/amazing-block`)
+5. 建立 Pull Request
 
-## 授權
+### 積木貢獻規範
 
-此專案採用 MIT 授權條款。
+- 每個積木必須包含 `block.yaml` 配置檔案
+- 支援多作業系統的積木必須提供對應腳本
+- 所有腳本必須包含錯誤處理 (`set -e`)
+- 新增積木需要更新文件和範例
+
+## 📜 授權
+
+此專案採用 MIT 授權條款。詳見 `LICENSE` 檔案。
+
+---
+
+**聯絡資訊：**  
+如有問題或建議，請建立 Issue 或聯繫專案維護者。
