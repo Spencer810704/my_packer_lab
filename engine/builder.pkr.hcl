@@ -189,6 +189,24 @@ build {
     script = "${var.blocks_path}/applications/openresty/scripts/common/validate.sh"
   }
 
+  # 自定義積木範例 - My App
+  provisioner "shell" {
+    except = !contains(var.enabled_blocks, "custom-my-app") ? ["amazon-ebs.dynamic"] : []
+    environment_vars = [
+      "DEBIAN_FRONTEND=noninteractive"
+    ]
+    scripts = [
+      "${var.blocks_path}/custom/my-app/scripts/${local.os_family}/install.sh",
+      "${var.blocks_path}/custom/my-app/scripts/${local.os_family}/configure.sh"
+    ]
+  }
+
+  # 自定義積木驗證 - My App
+  provisioner "shell" {
+    except = !contains(var.enabled_blocks, "custom-my-app") ? ["amazon-ebs.dynamic"] : []
+    script = "${var.blocks_path}/custom/my-app/scripts/common/validate.sh"
+  }
+
   # 系統清理 - Ubuntu
   provisioner "shell" {
     except = !contains(var.enabled_blocks, "base-ubuntu-2004") ? ["amazon-ebs.dynamic"] : []

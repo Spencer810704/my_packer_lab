@@ -1,0 +1,49 @@
+name: "my-app"
+description: "自定義應用程式積木範例"
+version: "1.0.0"
+category: "custom"
+
+os_support:
+  - os_family: "debian"
+    os_versions: ["20.04", "22.04"]
+    scripts:
+      install: "scripts/debian/install.sh"
+      configure: "scripts/debian/configure.sh"
+      validate: "scripts/common/validate.sh"
+  
+  - os_family: "rhel"
+    os_versions: ["8", "9"]
+    scripts:
+      install: "scripts/rhel/install.sh"
+      configure: "scripts/rhel/configure.sh"
+      validate: "scripts/common/validate.sh"
+
+  - os_family: "amazon-linux"
+    os_versions: ["2", "2023"]
+    scripts:
+      install: "scripts/amazon-linux/install.sh"
+      configure: "scripts/amazon-linux/configure.sh"
+      validate: "scripts/common/validate.sh"
+
+dependencies:
+  - "base-ubuntu-2004"  # 或其他基礎積木
+
+tags:
+  - "custom"
+  - "my-app"
+  - "application"
+
+# 自定義變數（可選）
+variables:
+  app_version: "latest"
+  install_path: "/opt/my-app"
+  
+# 需要開放的埠（可選）
+ports:
+  - 8080
+  - 8443
+
+# 需要的系統資源（可選）  
+resources:
+  min_memory: "2GB"
+  min_disk: "10GB"
