@@ -427,6 +427,15 @@ debconf: unable to initialize frontend: Dialog
 - 所有腳本必須包含錯誤處理 (`set -e`)
 - 新增積木需要更新文件和範例
 
+## 🔗 API 整合文件
+
+本系統提供完整的 Jenkins API 整合支援，適合整合到 IT 管理系統中：
+
+- **[API 整合完整文件](./JENKINS_API_INTEGRATION.md)** - 詳細的 API 規範和程式碼範例
+- **[API 快速參考](./API_QUICK_REFERENCE.md)** - 快速查詢常用參數和範例
+- **[IT 系統配置範例](./IT_SYSTEM_CONFIG_EXAMPLE.yaml)** - IT 管理系統的配置範例
+- **[API Schema](./api-schema.json)** - JSON Schema 驗證規範
+
 ## 📜 授權
 
 此專案採用 MIT 授權條款。詳見 `LICENSE` 檔案。
