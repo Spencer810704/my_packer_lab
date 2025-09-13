@@ -100,7 +100,7 @@ app-prometheus     # 開源監控系統
 **✅ 應放在自定義層（第3層）的積木：**
 ```yaml
 # 需要特殊授權或高度客製化
-custom-oracle-db           # 商業資料庫，需授權
+custom-oracle-db          # 商業資料庫，需授權
 custom-sap-erp            # 企業級 ERP 系統
 custom-clientA-backend    # 客戶 A 的專有後端服務
 custom-trading-platform   # 金融交易系統
@@ -165,7 +165,7 @@ Requester: "請求者"
 BuildDate: "建構日期"
 
 # 積木分類標籤（根據選擇的積木動態生成）
-Base: "ubuntu-2004"                    # 基礎系統（單一值）
+Base: "ubuntu-2004"                     # 基礎系統（單一值）
 Applications: "docker_openresty"        # 應用程式（多值用底線分隔）
 Configurations: "security_monitoring"   # 配置（多值用底線分隔）  
 Custom: "special_tool"                  # 自定義積木
@@ -289,14 +289,14 @@ base-ubuntu-2004              # Ubuntu 20.04 作業系統
 
 # 第2層 - 通用服務 (開源軟體)
 app-nginx                     # 反向代理
-app-postgresql               # 開源資料庫
-app-redis                    # 快取服務
-app-openjdk-11              # Java 運行環境
+app-postgresql                # 開源資料庫
+app-redis                     # 快取服務
+app-openjdk-11                # Java 運行環境
 
 # 第3層 - 自定義積木 (客戶專有)
-custom-clientA-webapp        # 客戶 A 的 Java 應用程式
-custom-oracle-jdbc-driver    # Oracle 商業驅動程式
-custom-dynatrace-agent       # 商業監控代理
+custom-clientA-webapp         # 客戶 A 的 Java 應用程式
+custom-oracle-jdbc-driver     # Oracle 商業驅動程式
+custom-dynatrace-agent        # 商業監控代理
 
 # 第4層 - Ansible 配置 (實例啟動後執行)
 ansible-playbook: clientA-production.yml
