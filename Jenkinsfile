@@ -294,22 +294,49 @@ pipeline {
                     ]
                 }
 
-                echo "📋 回調數據準備完成: ${groovy.json.JsonOutput.toJson(callbackData)}"
+                def callbackJson = groovy.json.JsonOutput.toJson(callbackData)
+                echo "📋 回調數據準備完成: ${callbackJson}"
 
-                // 發送 HTTP POST 回調
+                // 使用 curl 替代 httpRequest - 更可靠且不需要額外插件
                 try {
-                    def response = httpRequest(
-                        url: env.CALLBACK_URL,
-                        httpMode: 'POST',
-                        contentType: 'APPLICATION_JSON',
-                        requestBody: groovy.json.JsonOutput.toJson(callbackData),
-                        timeout: 30,
-                        validResponseCodes: '200:299',
-                        ignoreSslErrors: true
-                    )
-                    echo "✅ 回調發送成功: HTTP ${response.status}"
+                    // 將 JSON 寫入臨時文件以避免引號問題
+                    writeFile file: 'callback_payload.json', text: callbackJson
+                    
+                    // 使用 curl 發送 POST 請求
+                    def curlResult = sh(
+                        script: """
+                            curl -s -w "HTTPSTATUS:%{http_code}" \\
+                                 -X POST \\
+                                 -H "Content-Type: application/json" \\
+                                 -d @callback_payload.json \\
+                                 --connect-timeout 10 \\
+                                 --max-time 30 \\
+                                 "${env.CALLBACK_URL}"
+                        """,
+                        returnStdout: true
+                    ).trim()
+                    
+                    // 清理臨時文件
+                    sh 'rm -f callback_payload.json'
+                    
+                    // 解析響應
+                    def httpStatus = curlResult.tokenize("HTTPSTATUS:")[1]
+                    def responseBody = curlResult.tokenize("HTTPSTATUS:")[0]
+                    
+                    if (httpStatus.startsWith('2')) {
+                        echo "✅ 回調發送成功: HTTP ${httpStatus}"
+                        if (responseBody) {
+                            echo "回調響應: ${responseBody}"
+                        }
+                    } else {
+                        echo "⚠️ 回調返回非成功狀態: HTTP ${httpStatus}"
+                        echo "響應內容: ${responseBody}"
+                    }
+                    
                 } catch (Exception e) {
                     echo "❌ 回調發送失敗: ${e.message}"
+                    // 清理臨時文件（如果存在）
+                    sh 'rm -f callback_payload.json || true'
                     // 不要因為回調失敗而影響建構結果
                 }
 
