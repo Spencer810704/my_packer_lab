@@ -171,15 +171,20 @@ pipeline {
         }
 
         stage('🚀 建構 AMI') {
-            when {
-                expression { !params.DRY_RUN }
-            }
             steps {
                 script {
-                    echo "🏗️ 開始建構 AMI"
-                    dir('engine') {
-                        def buildCmd = buildPackerCommand('build')
-                        sh buildCmd
+                    if (params.DRY_RUN) {
+                        echo "🧪 DRY_RUN 模式: 僅驗證配置，不實際建構"
+                        // 生成模擬 AMI ID 用於測試和回調
+                        def timestamp = new Date().format('yyyyMMddHHmmss')
+                        env.AMI_ID = "ami-dryrun-${timestamp}"
+                        echo "🎭 模擬 AMI ID: ${env.AMI_ID}"
+                    } else {
+                        echo "🏗️ 開始建構 AMI"
+                        dir('engine') {
+                            def buildCmd = buildPackerCommand('build')
+                            sh buildCmd
+                        }
                     }
                 }
             }
