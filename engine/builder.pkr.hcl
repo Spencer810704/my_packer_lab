@@ -124,8 +124,8 @@ build {
     ]
     scripts = [
       "${var.blocks_path}/base/ubuntu-2004/wait-cloud-init.sh",
-      "${var.blocks_path}/base/ubuntu-2004/system-update.sh", 
-      "${var.blocks_path}/base/ubuntu-2004/install-packages.sh"
+      # "${var.blocks_path}/base/ubuntu-2004/system-update.sh", 
+      # "${var.blocks_path}/base/ubuntu-2004/install-packages.sh"
     ]
   }
 
