@@ -1,0 +1,421 @@
+pipeline {
+    agent any
+
+    options {
+        ansiColor('xterm')
+        timestamps()
+        timeout(time: 30, unit: 'MINUTES')
+    }
+
+    parameters {
+        // 🎯 必要參數
+        string(
+            name: 'AMI_ID',
+            defaultValue: '',
+            description: '要刪除的 AMI ID (必填)'
+        )
+
+        string(
+            name: 'AMI_NAME',
+            defaultValue: '',
+            description: 'AMI 名稱 (用於日誌記錄)'
+        )
+
+        choice(
+            name: 'AWS_REGION',
+            choices: ['ap-northeast-1', 'ap-southeast-1', 'us-east-1', 'us-west-2'],
+            description: 'AMI 所在的 AWS 區域'
+        )
+
+        // 🔒 安全參數
+        booleanParam(
+            name: 'FORCE_DELETE',
+            defaultValue: false,
+            description: '強制刪除 (即使有關聯的快照或實例)'
+        )
+
+        booleanParam(
+            name: 'DELETE_SNAPSHOTS',
+            defaultValue: true,
+            description: '同時刪除關聯的 EBS 快照'
+        )
+
+        // 📋 元資料參數
+        string(
+            name: 'REQUESTER',
+            defaultValue: '',
+            description: '刪除請求者'
+        )
+
+        string(
+            name: 'REASON',
+            defaultValue: '',
+            description: '刪除原因'
+        )
+
+        // ⚙️ 控制參數
+        booleanParam(
+            name: 'DRY_RUN',
+            defaultValue: true,
+            description: '僅模擬刪除，不實際執行'
+        )
+
+        // 🔗 回調參數
+        string(
+            name: 'CALLBACK_DATA',
+            defaultValue: '',
+            description: '回調數據 (由系統自動填入)'
+        )
+    }
+
+    environment {
+        AWS_DEFAULT_REGION = "${params.AWS_REGION}"
+        CALLBACK_URL = "http://infrastructure-mgmt-svc:8087/api/v1/callback/jenkins/delete"
+    }
+
+    stages {
+        stage('📋 驗證參數') {
+            steps {
+                script {
+                    echo "🔍 驗證刪除參數"
+
+                    // 檢查必填參數
+                    if (!params.AMI_ID?.trim()) {
+                        error("❌ AMI_ID 是必填參數")
+                    }
+
+                    if (!params.AMI_ID.startsWith('ami-')) {
+                        error("❌ 無效的 AMI ID 格式: ${params.AMI_ID}")
+                    }
+
+                    // 顯示刪除資訊
+                    echo """
+                    📝 刪除資訊:
+                      • AMI ID: ${params.AMI_ID}
+                      • AMI 名稱: ${params.AMI_NAME ?: 'N/A'}
+                      • 區域: ${params.AWS_REGION}
+                      • 請求者: ${params.REQUESTER ?: 'Manual'}
+                      • 原因: ${params.REASON ?: 'No reason provided'}
+                      • 強制刪除: ${params.FORCE_DELETE}
+                      • 刪除快照: ${params.DELETE_SNAPSHOTS}
+                      • DRY_RUN: ${params.DRY_RUN}
+                    """
+                }
+            }
+        }
+
+        stage('🔍 檢查 AMI 狀態') {
+            steps {
+                script {
+                    echo "📊 檢查 AMI 當前狀態"
+                    
+                    try {
+                        // 獲取 AMI 詳細資訊
+                        def amiInfo = sh(
+                            script: """
+                                aws ec2 describe-images \\
+                                    --image-ids ${params.AMI_ID} \\
+                                    --region ${params.AWS_REGION} \\
+                                    --output json
+                            """,
+                            returnStdout: true
+                        ).trim()
+                        
+                        def amiData = readJSON text: amiInfo
+                        
+                        if (amiData.Images.size() == 0) {
+                            error("❌ 找不到 AMI: ${params.AMI_ID}")
+                        }
+                        
+                        def ami = amiData.Images[0]
+                        env.AMI_STATE = ami.State
+                        env.AMI_NAME_ACTUAL = ami.Name ?: 'Unnamed'
+                        env.AMI_DESCRIPTION = ami.Description ?: 'No description'
+                        
+                        echo """
+                        📋 AMI 資訊:
+                          • 名稱: ${env.AMI_NAME_ACTUAL}
+                          • 狀態: ${env.AMI_STATE}
+                          • 描述: ${env.AMI_DESCRIPTION}
+                          • 創建時間: ${ami.CreationDate}
+                        """
+                        
+                        // 儲存快照 IDs
+                        def snapshotIds = []
+                        ami.BlockDeviceMappings.each { mapping ->
+                            if (mapping.Ebs?.SnapshotId) {
+                                snapshotIds.add(mapping.Ebs.SnapshotId)
+                            }
+                        }
+                        env.SNAPSHOT_IDS = snapshotIds.join(',')
+                        
+                        if (snapshotIds.size() > 0) {
+                            echo "💾 關聯快照: ${snapshotIds.join(', ')}"
+                        }
+                        
+                    } catch (Exception e) {
+                        error("❌ 無法獲取 AMI 資訊: ${e.message}")
+                    }
+                }
+            }
+        }
+
+        stage('🔒 安全檢查') {
+            when {
+                expression { !params.FORCE_DELETE }
+            }
+            steps {
+                script {
+                    echo "🛡️ 執行安全檢查"
+                    
+                    // 檢查是否有正在使用的實例
+                    def instanceCheck = sh(
+                        script: """
+                            aws ec2 describe-instances \\
+                                --filters "Name=image-id,Values=${params.AMI_ID}" \\
+                                          "Name=instance-state-name,Values=pending,running,stopping,stopped" \\
+                                --region ${params.AWS_REGION} \\
+                                --query 'Reservations[*].Instances[*].InstanceId' \\
+                                --output json
+                        """,
+                        returnStdout: true
+                    ).trim()
+                    
+                    def instances = readJSON text: instanceCheck
+                    def instanceList = instances.flatten()
+                    
+                    if (instanceList.size() > 0) {
+                        error("""
+                        ❌ 此 AMI 仍有 ${instanceList.size()} 個實例在使用:
+                        ${instanceList.join(', ')}
+                        請先終止這些實例，或使用 FORCE_DELETE=true 強制刪除
+                        """)
+                    }
+                    
+                    echo "✅ 安全檢查通過: 沒有正在使用的實例"
+                }
+            }
+        }
+
+        stage('🗑️ 刪除 AMI') {
+            steps {
+                script {
+                    if (params.DRY_RUN) {
+                        echo "🧪 DRY_RUN 模式: 模擬刪除 AMI"
+                        echo "將執行: aws ec2 deregister-image --image-id ${params.AMI_ID}"
+                        env.DELETE_STATUS = "dry_run_success"
+                    } else {
+                        echo "🗑️ 開始刪除 AMI: ${params.AMI_ID}"
+                        
+                        try {
+                            sh """
+                                aws ec2 deregister-image \\
+                                    --image-id ${params.AMI_ID} \\
+                                    --region ${params.AWS_REGION}
+                            """
+                            
+                            echo "✅ AMI 已成功註銷"
+                            env.DELETE_STATUS = "success"
+                            
+                        } catch (Exception e) {
+                            env.DELETE_STATUS = "failed"
+                            env.DELETE_ERROR = e.message
+                            error("❌ AMI 刪除失敗: ${e.message}")
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('💾 刪除快照') {
+            when {
+                expression { 
+                    params.DELETE_SNAPSHOTS && 
+                    env.SNAPSHOT_IDS?.trim() &&
+                    env.DELETE_STATUS in ['success', 'dry_run_success']
+                }
+            }
+            steps {
+                script {
+                    def snapshotIds = env.SNAPSHOT_IDS.split(',')
+                    echo "💾 準備刪除 ${snapshotIds.size()} 個快照"
+                    
+                    def deletedSnapshots = []
+                    def failedSnapshots = []
+                    
+                    snapshotIds.each { snapshotId ->
+                        if (params.DRY_RUN) {
+                            echo "🧪 DRY_RUN: 將刪除快照 ${snapshotId}"
+                            deletedSnapshots.add(snapshotId)
+                        } else {
+                            try {
+                                sh """
+                                    aws ec2 delete-snapshot \\
+                                        --snapshot-id ${snapshotId} \\
+                                        --region ${params.AWS_REGION}
+                                """
+                                deletedSnapshots.add(snapshotId)
+                                echo "✅ 已刪除快照: ${snapshotId}"
+                            } catch (Exception e) {
+                                failedSnapshots.add(snapshotId)
+                                echo "⚠️ 無法刪除快照 ${snapshotId}: ${e.message}"
+                            }
+                        }
+                    }
+                    
+                    env.DELETED_SNAPSHOTS = deletedSnapshots.join(',')
+                    env.FAILED_SNAPSHOTS = failedSnapshots.join(',')
+                    
+                    if (failedSnapshots.size() > 0) {
+                        echo "⚠️ ${failedSnapshots.size()} 個快照刪除失敗"
+                    }
+                }
+            }
+        }
+
+        stage('📝 記錄審計日誌') {
+            steps {
+                script {
+                    def auditLog = [
+                        timestamp: new Date().format('yyyy-MM-dd HH:mm:ss'),
+                        action: 'DELETE_AMI',
+                        ami_id: params.AMI_ID,
+                        ami_name: env.AMI_NAME_ACTUAL ?: params.AMI_NAME,
+                        region: params.AWS_REGION,
+                        requester: params.REQUESTER ?: 'Manual',
+                        reason: params.REASON ?: 'No reason provided',
+                        dry_run: params.DRY_RUN,
+                        force_delete: params.FORCE_DELETE,
+                        delete_snapshots: params.DELETE_SNAPSHOTS,
+                        deleted_snapshots: env.DELETED_SNAPSHOTS ?: '',
+                        failed_snapshots: env.FAILED_SNAPSHOTS ?: '',
+                        status: env.DELETE_STATUS,
+                        build_number: env.BUILD_NUMBER,
+                        build_url: env.BUILD_URL
+                    ]
+                    
+                    def auditJson = groovy.json.JsonOutput.prettyPrint(
+                        groovy.json.JsonOutput.toJson(auditLog)
+                    )
+                    
+                    echo "📝 審計日誌:\n${auditJson}"
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            script {
+                echo "📡 發送刪除結果回調"
+                
+                // 準備回調數據
+                def callbackData = [
+                    build_id: env.BUILD_NUMBER as Integer,
+                    action: 'delete_ami',
+                    ami_id: params.AMI_ID,
+                    ami_name: env.AMI_NAME_ACTUAL ?: params.AMI_NAME,
+                    status: determineDeleteStatus(),
+                    dry_run: params.DRY_RUN,
+                    deleted_snapshots: env.DELETED_SNAPSHOTS?.split(',') ?: [],
+                    failed_snapshots: env.FAILED_SNAPSHOTS?.split(',') ?: [],
+                    log_url: "${env.BUILD_URL}console",
+                    callback_data: [:]
+                ]
+                
+                // 解析原始回調數據
+                if (params.CALLBACK_DATA?.trim()) {
+                    try {
+                        def originalCallbackData = readJSON text: params.CALLBACK_DATA
+                        callbackData.callback_data = originalCallbackData
+                        echo "✅ 已解析回調數據"
+                    } catch (Exception e) {
+                        echo "⚠️ 無法解析 CALLBACK_DATA: ${e.message}"
+                    }
+                }
+                
+                def callbackJson = groovy.json.JsonOutput.toJson(callbackData)
+                
+                try {
+                    writeFile file: 'callback_payload.json', text: callbackJson
+                    
+                    def curlResult = sh(
+                        script: """
+                            curl -s -w "HTTPSTATUS:%{http_code}" \\
+                                 -X POST \\
+                                 -H "Content-Type: application/json" \\
+                                 -d @callback_payload.json \\
+                                 --connect-timeout 10 \\
+                                 --max-time 30 \\
+                                 "${env.CALLBACK_URL}"
+                        """,
+                        returnStdout: true
+                    ).trim()
+                    
+                    sh 'rm -f callback_payload.json'
+                    
+                    def httpStatus = curlResult.tokenize("HTTPSTATUS:")[1]
+                    def responseBody = curlResult.tokenize("HTTPSTATUS:")[0]
+                    
+                    if (httpStatus.startsWith('2')) {
+                        echo "✅ 回調發送成功: HTTP ${httpStatus}"
+                    } else {
+                        echo "⚠️ 回調返回非成功狀態: HTTP ${httpStatus}"
+                        echo "響應內容: ${responseBody}"
+                    }
+                    
+                } catch (Exception e) {
+                    echo "❌ 回調發送失敗: ${e.message}"
+                    sh 'rm -f callback_payload.json || true'
+                }
+                
+                echo "🧹 清理工作空間"
+                cleanWs()
+            }
+        }
+
+        success {
+            script {
+                def message = params.DRY_RUN ? 
+                    "✅ AMI 刪除模擬成功完成" : 
+                    "✅ AMI 已成功刪除"
+                    
+                echo """
+                ${message}
+                  • AMI ID: ${params.AMI_ID}
+                  • 名稱: ${env.AMI_NAME_ACTUAL ?: params.AMI_NAME}
+                  • 請求者: ${params.REQUESTER ?: 'Manual'}
+                """
+                
+                if (env.DELETED_SNAPSHOTS?.trim()) {
+                    echo "  • 已刪除快照: ${env.DELETED_SNAPSHOTS}"
+                }
+            }
+        }
+
+        failure {
+            script {
+                echo """
+                ❌ AMI 刪除失敗
+                  • AMI ID: ${params.AMI_ID}
+                  • 錯誤: ${env.DELETE_ERROR ?: 'Unknown error'}
+                """
+            }
+        }
+    }
+}
+
+def determineDeleteStatus() {
+    if (params.DRY_RUN) {
+        return "dry_run"
+    }
+    
+    if (env.DELETE_STATUS == 'success') {
+        if (env.FAILED_SNAPSHOTS?.trim()) {
+            return "partial_success"
+        }
+        return "success"
+    }
+    
+    return "failed"
+}
