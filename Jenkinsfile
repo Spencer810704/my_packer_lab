@@ -63,7 +63,7 @@ pipeline {
         // ⚙️ 控制參數
         booleanParam(
             name: 'DRY_RUN',
-            defaultValue: true,
+            defaultValue: false,
             description: '僅驗證配置，不實際建構 AMI'
         )
 
