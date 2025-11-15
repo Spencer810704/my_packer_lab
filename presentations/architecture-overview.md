@@ -128,48 +128,52 @@ graph TB
 
 ### 第1層：基礎系統積木 (Base Layer)
 ```
-┌─────────────────────────────────────┐
-│         基礎作業系統核心              │
-│  • Ubuntu 20.04/22.04 LTS          │
-│  • Amazon Linux 2                  │
-│  • Red Hat Enterprise Linux 8/9    │
-│  • 系統更新與基本套件               │
-│  • SSH 配置與安全設定               │
-└─────────────────────────────────────┘
+┌─────────────────────────────────────────┐
+│           Base Operating System         │
+├─────────────────────────────────────────┤
+│  • Ubuntu 20.04/22.04 LTS               │
+│  • Amazon Linux 2                       │
+│  • Red Hat Enterprise Linux 8/9         │
+│  • System updates & basic packages      │
+│  • SSH configuration & security setup   │
+└─────────────────────────────────────────┘
 ```
 
 ### 第2層：通用服務積木 (Application Layer)
 ```
-┌─────────────────────────────────────┐
-│         開源應用程式與服務            │
-│  • Docker 容器引擎                  │
-│  • OpenResty/Nginx Web Server      │
-│  • Node.js/Python 運行環境         │
-│  • PostgreSQL/Redis 資料庫         │
-│  • Prometheus 監控系統              │
-└─────────────────────────────────────┘
+┌─────────────────────────────────────────┐
+│        Open Source Apps & Services      │
+├─────────────────────────────────────────┤
+│  • Docker Container Engine              │
+│  • OpenResty/Nginx Web Server           │
+│  • Node.js/Python Runtime Environment   │
+│  • PostgreSQL/Redis Database            │
+│  • Prometheus Monitoring System         │
+└─────────────────────────────────────────┘
 ```
 
 ### 第3層：自定義積木 (Custom Layer)
 ```
-┌─────────────────────────────────────┐
-│         客戶專用與商業軟體            │
-│  • 客戶專有應用程式                 │
-│  • Oracle Database 等商業軟體      │
-│  • 行業特定系統                     │
-│  • 商業授權監控工具                 │
-└─────────────────────────────────────┘
+┌─────────────────────────────────────────┐
+│       Custom & Commercial Software      │
+├─────────────────────────────────────────┤
+│  • Customer proprietary applications    │
+│  • Oracle Database & commercial tools   │
+│  • Industry-specific systems            │
+│  • Commercial monitoring tools          │
+└─────────────────────────────────────────┘
 ```
 
 ### 第4層：動態配置層 (Configuration Layer)
 ```
-┌─────────────────────────────────────┐
-│         實例啟動時動態配置            │
-│  • Ansible/cloud-init 配置         │
-│  • 環境變數注入                     │
-│  • 連線字串配置                     │
-│  • 授權金鑰管理                     │
-└─────────────────────────────────────┘
+┌─────────────────────────────────────────┐
+│      Dynamic Configuration on Boot      │
+├─────────────────────────────────────────┤
+│  • Ansible/cloud-init configuration     │
+│  • Environment variable injection       │
+│  • Connection string configuration      │
+│  • Authorization key management         │
+└─────────────────────────────────────────┘
 ```
 
 ## ⚙️ 技術架構詳解
